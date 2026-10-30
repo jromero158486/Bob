@@ -1,4 +1,4 @@
-# Lumen Clinical
+# Levriq
 
 **The right patient information for the right clinician, with evidence you can check.**
 
