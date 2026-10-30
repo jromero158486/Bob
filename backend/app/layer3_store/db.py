@@ -35,8 +35,11 @@ def migrate(url: str | None = None) -> None:
     """Apply Alembic migrations to head (also used for SQLite in tests/dev)."""
     from alembic import command
     from alembic.config import Config
+    url = url or database_url()
+    if url.startswith("sqlite:///") and not url.startswith("sqlite:///:memory:"):
+        Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
     root = Path(__file__).resolve().parents[3]
     cfg = Config(str(root / "alembic.ini"))
     cfg.set_main_option("script_location", str(root / "backend" / "app" / "layer3_store" / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", url or database_url())
+    cfg.set_main_option("sqlalchemy.url", url)
     command.upgrade(cfg, "head")
