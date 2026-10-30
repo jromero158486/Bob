@@ -14,8 +14,10 @@ top-k 5), and a judge labels each claim Supported / Not Supported / Not Addresse
 """
 from __future__ import annotations
 
+import json
 import re
 import time
+from pathlib import Path
 from dataclasses import dataclass, field
 
 from backend.app.layer1_ingestion.processing.segmentation import _split_sentences
@@ -45,7 +47,7 @@ _STOP = set("der die das ein eine einer eines einem den dem des und oder mit von
             "positiv negativ positive negative kein keine keinen keinem keiner nicht ohne no not without "
             # generic clinical predicates: they must not make unrelated passages look topical
             "nimmt erhält erhielt zeigte zeigt zeigten zeigen besteht bestand betrug beträgt lag liegt wurde "
-            "durchgeführt geplant empfohlen takes took received showed shows was were done planned".split())
+            "durchgeführt geplant empfohlen bekannt known takes took received showed shows was were done planned".split())
 _TOK = re.compile(r"[a-zäöüß0-9]+", re.I)
 
 
@@ -92,8 +94,45 @@ def negated(text: str) -> bool:
     return bool(_NEG.search(text))
 
 
+# Cross-language/abbreviation equivalences applied to claim and evidence alike ("Kontrastmittelallergie" ~ "KM-Allergie",
+# "LVEF" ~ "EF", "allergic" ~ "Allergie"), and drug brand/ingredient names collapsed to their ATC code via the lexicon.
+_ABBREV = [(re.compile(r"kontrastmittel|(?:iodinated )?contrast (?:media|medium|agents?)", re.I), " km "),
+           (re.compile(r"ejektionsfraktion|ejection fraction|\blvef\b", re.I), " ef "),
+           (re.compile(r"\ballerg\w*", re.I), " allergie ")]
+_SHORT_TERMS = {"km", "ef", "ass"}
+_UNITS = {"mg", "mcg", "ug", "ml", "kg", "cm", "mm", "mmhg", "ie", "iu"}
+_MED_ENTRIES = json.loads((Path(__file__).resolve().parents[1] / "layer2_extraction" / "resources" /
+                           "medications_de.json").read_text(encoding="utf-8"))["entries"]
+_MEDS = [(re.compile(r"\b(?:" + "|".join(re.escape(n) for n in [e["ingredient"], *e["names"]]) + r")\b", re.I),
+          e["atc"].lower(), e["names"]) for e in _MED_ENTRIES if e.get("atc")]
+
+
+def _normalize(text: str) -> str:
+    for pat, rep in _ABBREV:
+        text = pat.sub(rep, text)
+    return text
+
+
+def gloss(text: str) -> str:
+    """Evidence text for the NLI judge with abbreviations spelled out and brand names glossed with their ingredient
+    ("Glucophage 1000mg" -> "Glucophage (metformin) 1000mg"); citations keep the verbatim source text."""
+    text = re.sub(r"\bKM\b", "Kontrastmittel (KM)", text)
+    for e in _MED_ENTRIES:
+        if e.get("atc") and e["ingredient"].lower() not in text.lower():
+            pat = re.compile(r"\b(" + "|".join(re.escape(n) for n in e["names"]) + r")\b", re.I)
+            text = pat.sub(lambda m: f"{m.group(1)} ({e['ingredient']})", text, count=1)
+    return text
+
+
+def drug_names(text: str) -> list[str]:
+    """Lexicon names of every drug mentioned in the text (brand or ingredient), for lexical evidence search."""
+    return [n for pat, _, names in _MEDS if pat.search(text) for n in names]
+
+
 def content_tokens(text: str) -> set[str]:
-    return {t.lower() for t in _TOK.findall(text) if t.lower() not in _STOP and not t.isdigit() and len(t) >= 2}
+    toks = {t.lower() for t in _TOK.findall(_normalize(text))
+            if t.lower() not in _STOP and t.lower() not in _UNITS and not t.isdigit() and len(t) >= 2}
+    return toks | {atc for pat, atc, _ in _MEDS if pat.search(text)}
 
 
 def _shared(ct: set[str], et: set[str]) -> int:
@@ -182,7 +221,9 @@ def _claim_terms(claim: str) -> list[str]:
     """Search terms for one claim: the planner's lexicon terms plus the claim's own content words (VeriFact
     queries with the claim text itself; the dense/hybrid modes embed title + terms)."""
     terms = _search_terms(claim)
-    return terms + sorted(t for t in content_tokens(claim) if len(t) >= 3 and t not in {x.lower() for x in terms})
+    terms = terms + [n for n in drug_names(claim) if n.lower() not in {x.lower() for x in terms}]
+    return terms + sorted(t for t in content_tokens(claim)
+                          if (len(t) >= 3 or t in _SHORT_TERMS) and t not in {x.lower() for x in terms})
 
 
 class ClaimVerificationPipeline:
@@ -228,7 +269,7 @@ class ClaimVerificationPipeline:
     def _exact_term_passages(self, claim: str, top: list[str], passages: dict, limit: int = 2) -> list[str]:
         """Lexical hits containing a claim word verbatim, appended to dense evidence: a short claim ("Patient nimmt
         ASS") embeds close to generic passages, while the medication row naming "ASS" is found lexically."""
-        words = [w for w in content_tokens(claim) if len(w) >= 3]
+        words = [w for w in content_tokens(claim) if len(w) >= 3 or w in _SHORT_TERMS] + drug_names(claim)
         if not words:
             return []
         pat = re.compile(r"\b(?:" + "|".join(map(re.escape, words)) + r")\b", re.I)
@@ -254,7 +295,7 @@ class ClaimVerificationPipeline:
         cits = self.evidence(claim.text)
         dets = [deterministic_check(claim.text, c.passage_text, c.document_date) for c in cits]
         if self.judge_used == "nli" and cits:
-            probs = self._nli.score([(c.passage_text, claim.text) for c in cits])
+            probs = self._nli.score([(gloss(c.passage_text), claim.text) for c in cits])
         else:
             probs = [(None, None, None)] * len(cits)
         r.evidence = [(c, p[0], p[2], d) for c, p, d in zip(cits, probs, dets)]

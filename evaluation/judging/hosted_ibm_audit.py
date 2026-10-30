@@ -9,6 +9,7 @@ Clinical correctness of the 15 answers is graded manually from the saved screens
       --cases <ibm>/cases --data <ibm>/data --out artifacts/judging [--extra tasks.json]
 """
 import argparse
+import html
 import json
 import os
 import re
@@ -89,7 +90,7 @@ def main():
     originals = {}
     for p in Path(a.data, PATIENT, "documents").glob("*.json"):
         rec = json.loads(p.read_text())
-        originals[str((rec.get("metadata") or {}).get("id") or p.stem)] = _norm(rec["text"])
+        originals[str((rec.get("metadata") or {}).get("id") or p.stem)] = _norm(html.unescape(rec["text"]))
     tasks = [{"id": f"S{i + 1}", "role": ROLES[i], "task": f"{s['title']}. {s['description']}"}
              for i, s in enumerate(situations(Path(a.cases, "situations.md").read_text()))]
     if a.extra:

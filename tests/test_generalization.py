@@ -99,3 +99,36 @@ def test_generic_lab_request_plans_laboratory_values():
     for req in ["Oncologist: current cancer treatment plan and relevant labs", "Hausarzt: aktuelle Laborwerte"]:
         steps = [s for s in heuristic_plan(req).steps if s.concept == "labs"]
         assert steps and "hba1c" in steps[0].filters.observation_names
+
+
+PAIRS = [
+    ("Nephrologist: Renal check before contrast CT: eGFR, creatinine, metformin and contrast allergy (KM).",
+     "Nephrologin: Nierenfunktion vor KM-CT: eGFR, Kreatinin, Metformin und KM-Allergie?"),
+    ("Neurologist: TIA work-up: prior episodes of transient monocular blindness, carotid findings and antiplatelets.",
+     "Neurologe: TIA-Abklärung: frühere Episoden von Amaurosis fugax, Karotisbefunde und Thrombozytenaggregationshemmung."),
+    ("Endocrinologist: DM2 control: HbA1c trend, weight loss, GLP-1 agonist and osteoporosis treatment.",
+     "Endokrinologe: DM-II-Einstellung: HbA1c-Verlauf, Gewichtsabnahme, GLP-1-Agonist und Osteoporosetherapie."),
+]
+
+
+@pytest.mark.parametrize("en,de", PAIRS)
+def test_equivalent_english_and_german_requests_plan_the_same_concepts(en, de):
+    from backend.app.layer4_planner.planner import heuristic_plan
+    pe, pd = heuristic_plan(en), heuristic_plan(de)
+    assert {s.concept for s in pe.steps} - {"free_text"} == {s.concept for s in pd.steps} - {"free_text"}
+    assert pe.presentation.language == "en" and pd.presentation.language == "de"
+
+
+def test_german_request_gets_german_section_titles():
+    from backend.app.layer4_planner.planner import heuristic_plan
+    titles = {s.title for s in heuristic_plan(PAIRS[0][1]).steps}
+    assert "Nierenfunktion" in titles and "Allergien und Unverträglichkeiten" in titles
+    assert "Kidney function" in {s.title for s in heuristic_plan(PAIRS[0][0]).steps}
+
+
+def test_abbreviations_and_drug_classes_reach_medication_steps():
+    from backend.app.layer4_planner.planner import heuristic_plan
+    concepts = {s.concept for s in heuristic_plan(PAIRS[2][0]).steps}
+    assert {"glucose_lowering", "bone_health", "hba1c", "weight"} <= concepts
+    assert "contrast_safety" in {s.concept for s in heuristic_plan(PAIRS[0][1]).steps}
+    assert "prior_episodes" in {s.concept for s in heuristic_plan(PAIRS[1][1]).steps}
