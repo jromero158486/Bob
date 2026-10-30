@@ -168,6 +168,8 @@ def _codes_ok(f: ClinicalFact, prefixes: list[str]) -> bool:
     return not prefixes or any(c.code.startswith(tuple(prefixes)) for c in f.codings)
 
 
+SIGN_OFF = re.compile(r"\b(befundet|vidiert|diktiert|geschrieben|gezeichnet|gez\.|unterschrieben)\s*:?\s*"
+                      r"((dr|prof|oa|oä|ass|dipl)\.?\s*)*[\wÄÖÜäöüß.\-]*", re.I)
 RETRIEVAL_MODES = ("auto", "lexical", "dense", "hybrid", "hybrid_rerank")
 
 
@@ -394,6 +396,8 @@ class Executor:
 
     def _eligible(self, p, step: PlanStep) -> bool:
         if p.passage_type in ("section_heading", "table_header") or len(p.display_text) < 25:
+            return False
+        if len(SIGN_OFF.sub("", p.display_text).strip(" .,;:-")) < 8:  # "befundet: Dr. X vidiert: Dr. Y"
             return False
         if step.filters.require_terms and not any(r.casefold() in p.display_text.casefold()
                                                   for r in step.filters.require_terms):

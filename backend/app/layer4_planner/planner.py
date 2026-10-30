@@ -6,6 +6,9 @@ over the concept vocabulary. The response always states which planner produced t
 """
 from __future__ import annotations
 
+import copy
+import os
+
 import json
 import calendar
 import re
@@ -160,6 +163,9 @@ def plan_task(request: str, provider=None) -> TaskPlan:
         raise ValueError("Empty task")
     if provider is None:
         return heuristic_plan(request)
+    if hasattr(provider, "timeout"):  # interactive request: bound the planner call, the fallback is reported
+        provider = copy.copy(provider)
+        provider.timeout = int(os.environ.get("PLANNER_TIMEOUT", "10"))
     try:
         return llm_plan(request, provider)
     except (ValidationError, ValueError, KeyError, RuntimeError, OSError) as exc:
