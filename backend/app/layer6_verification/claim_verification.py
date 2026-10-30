@@ -166,6 +166,18 @@ def _veto(d: dict) -> bool:
     return d["values"] == "fail" or d["dates"] == "fail" or d["negation"] == "fail"
 
 
+def _evidence_rank(verdict: str, cit, ent, con, det: dict) -> tuple:
+    """Order evidence so the passages that decided the verdict come first (UIs show only the top few)."""
+    topical = det["overlap"] >= 0.5
+    if verdict == "supported":
+        decisive = not _veto(det) and (ent >= ENTAIL_T if ent is not None else topical)
+        return (not decisive, -(ent or 0), -det["overlap"])
+    if verdict == "contradicted":
+        decisive = topical and (det["conflicting_values"] or det["negation"] == "fail" or (con or 0) >= CONTRA_T)
+        return (not decisive, -(con or 0), -det["overlap"])
+    return (0,)
+
+
 def _claim_terms(claim: str) -> list[str]:
     """Search terms for one claim: the planner's lexicon terms plus the claim's own content words (VeriFact
     queries with the claim text itself; the dense/hybrid modes embed title + terms)."""
@@ -203,6 +215,7 @@ class ClaimVerificationPipeline:
         step = PlanStep.model_validate({"step_id": "verify", "title": claim, "concept": "verification",
                                         "operation": "search_text", "filters": {"search_terms": _claim_terms(claim)}})
         top, passages, _ = self.ex.search_passages(step, self.k)
+        top = top + self._exact_term_passages(claim, top, passages)
         out = []
         for pid in top:
             cit = self.ex.syn.passage_citation(passages[pid])
@@ -211,6 +224,17 @@ class ClaimVerificationPipeline:
             else:
                 self.warnings.append(f"evidence {pid} dropped: citation integrity failed")
         return out
+
+    def _exact_term_passages(self, claim: str, top: list[str], passages: dict, limit: int = 2) -> list[str]:
+        """Lexical hits containing a claim word verbatim, appended to dense evidence: a short claim ("Patient nimmt
+        ASS") embeds close to generic passages, while the medication row naming "ASS" is found lexically."""
+        words = [w for w in content_tokens(claim) if len(w) >= 3]
+        if not words:
+            return []
+        pat = re.compile(r"\b(?:" + "|".join(map(re.escape, words)) + r")\b", re.I)
+        extra = [pid for pid in self.ex.last_rankings.get("lexical", [])
+                 if pid not in top and pat.search(passages[pid].display_text)]
+        return extra[:limit]
 
     def _groq(self, claim: str, cits) -> tuple[float, float]:
         ref = "\n".join(f"[{c.document_date or '?'}] {c.passage_text}" for c in cits)
@@ -284,6 +308,7 @@ class ClaimVerificationPipeline:
     @staticmethod
     def _done(r: ClaimResult, verdict: str, review: bool, reason: str) -> ClaimResult:
         r.verdict, r.needs_review, r.review_reason = verdict, review, reason
+        r.evidence.sort(key=lambda ev: _evidence_rank(verdict, *ev))
         return r
 
     def run(self, text: str, atomizer: str = "rules") -> tuple[list[ClaimResult], dict]:

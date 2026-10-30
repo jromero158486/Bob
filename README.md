@@ -3,7 +3,7 @@
 **The right patient information, for the right clinician, with evidence you can check.**
 
 **Healthcare Hackathon Vienna 2026 · Track 1: Clinical Documentation**  
-**[Open the live demo](https://screenshot-stitchery-studio.lovable.app)** · [Scientific report](docs/SCIENTIFIC_REPORT.md)
+**[Open the live demo](https://screenshot-stitchery-studio.lovable.app)** (live FastAPI backend on Exoscale, Vienna) · [IBM judging results](docs/JUDGING_RESULTS.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md)
 
 ## The problem
 
@@ -16,6 +16,9 @@ A patient's story is scattered across clinical letters, medication lists and rep
 **It supports clinical review; it does not replace clinical judgment.**
 
 ## Try it in the demo
+
+To reproduce the five official IBM scenarios, follow [docs/DEMO_SCRIPT_IBM.md](docs/DEMO_SCRIPT_IBM.md). A two-minute walkthrough script is in [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md).
+
 
 1. **Preoperative review (German):** Role: `Anästhesistin` · Task: `Präoperative Abklärung: Allergien, Antikoagulation, Raucherstatus und relevante Herzbefunde?`
 2. **Cancer treatment (English):** `What is the planned breast cancer treatment and when, and what are the receptor status and Ki-67?`
@@ -47,7 +50,29 @@ flowchart TD
     L7 --> O["Clinician reviews the result<br/>and opens original source evidence"]
 ```
 
-**Technology:** Python / FastAPI · medSpaCy + German ConText rules · PostgreSQL + pgvector · BGE-M3 multilingual retrieval · optional multilingual NLI verification · React / TypeScript / Lovable · Docker / Exoscale.
+**Technology actually running in the demo:**
+- **Backend:** Python 3.11 / FastAPI.
+- **Extraction:** rule-based German extraction with medSpaCy and German NegEx/ConText rules; local ATC/ICD-10/LOINC lexicons.
+- **Storage:** PostgreSQL 16 + pgvector.
+- **Retrieval:** BGE-M3 (`BAAI/bge-m3`) dense retrieval, plus structured fact queries.
+- **Planning:** a rule-based task planner. An LLM planner exists but is off in the demo.
+- **Verification:** deterministic citation-integrity checks in every response; optional multilingual NLI (`mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`) on request.
+- **Frontend:** React / TypeScript built with Lovable.
+- **Hosting:** Docker Compose on one Exoscale VM, with Caddy HTTPS and a demo token.
+
+Deferred and **not** in the demo: FHIR export, temporal knowledge graph, autonomous (ReAct) agent.
+
+## IBM Track 1 audit (official 5 situations, 15 questions)
+
+Run on the published app and hosted backend; full details in [docs/JUDGING_RESULTS.md](docs/JUDGING_RESULTS.md).
+
+| Metric | Result |
+|---|---|
+| Correct answers, visible without clicking | **12/15**: 2 partial (ED cause link, follow-up interval), 1 failed (kidney function not flagged as undocumented) |
+| Traceability | **100%**: 456/456 displayed facts linked; 747/747 links reproduce the exact original passage |
+| Invented facts | **0 found** in manual review of the answer facts |
+| Contradictions | 8 flagged: 7 real, 1 false alarm (net +6); changes over time are not flagged |
+| Slowest screen | **1.9 s** (target < 10 s) |
 
 ## Early evaluation
 
@@ -60,6 +85,14 @@ These are **preliminary, small-sample engineering results**, not evidence of cli
 
 ## Scope and limitations
 
-This is a **research prototype using synthetic hackathon data**, not a medical device. A *supported* claim means that it matches the cited record, **not that it has been clinically verified**. Advanced NLI verification is optional; the main response prioritizes speed and strict source integrity. The demo does not implement hospital-grade authentication or patient authorization.
+This is a **research prototype using synthetic hackathon data**, not a medical device. A *supported* claim means that it matches the cited record, **not that it has been clinically verified**. Advanced NLI verification is optional; the main response prioritizes speed and strict source integrity. The demo does not implement hospital-grade authentication or patient authorization; the demo token is visible in the public web app and only keeps out casual traffic.
 
-**Project resources:** [Scientific report](docs/SCIENTIFIC_REPORT.md) · [Demo runbook](docs/DEMO_RUNBOOK.md) · [Windows backup setup](docs/WINDOWS_SETUP.md) · [Security limitations](docs/SECURITY_AND_AUTH.md)
+**Known gaps from the IBM audit:**
+- Implicit contrast-imaging context does not trigger the kidney-function check.
+- Causal links and follow-up intervals stay in the cited passages instead of the answer line.
+- Conflicts show explanations with source buttons rather than side-by-side passages.
+- Some screens include extra, older facts.
+- Claim verification does not map English generic drug names ("aspirin").
+- Everything was evaluated on **one synthetic patient**, and the 15 questions informed the rule vocabulary.
+
+**Project resources:** [IBM judging results](docs/JUDGING_RESULTS.md) · [IBM demo script](docs/DEMO_SCRIPT_IBM.md) · [Video script](docs/DEMO_VIDEO_SCRIPT.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md) · [Demo runbook](docs/DEMO_RUNBOOK.md) · [Windows backup setup](docs/WINDOWS_SETUP.md) · [Security limitations](docs/SECURITY_AND_AUTH.md)

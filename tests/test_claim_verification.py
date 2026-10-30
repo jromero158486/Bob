@@ -59,6 +59,8 @@ def test_deterministic_baseline_verdicts(store):
     assert v["Gewicht 80 kg"].verdict == "supported" and not v["Gewicht 80 kg"].needs_review
     assert v["Gewicht 90 kg"].verdict == "contradicted" and v["Gewicht 90 kg"].needs_review
     assert v["Es besteht ein Perikarderguss"].verdict == "contradicted"
+    assert v["Gewicht 80 kg"].evidence[0][3]["values"] == "pass"
+    assert v["Gewicht 90 kg"].evidence[0][3]["conflicting_values"]
     # The penicillin allergy belongs to patient B: never evidence for patient A.
     pen = v["Die Patientin hat eine Penicillin-Allergie"]
     assert pen.verdict == "not_addressed" and pen.needs_review
@@ -96,3 +98,14 @@ def test_nli_judge_never_supports_without_deterministic_agreement(store):
     assert v["Normale LV-Funktion mit EF 55 %"].verdict == "supported"
     assert v["Normale LV-Funktion mit EF 35 %"].verdict != "supported"
     assert v["Normale LV-Funktion mit EF 55 %"].semantic["judge"] == "nli"
+
+
+def test_short_claim_gets_evidence_row_naming_the_drug(store):
+    from backend.app.layer4_planner.contracts import PlanStep
+    from backend.app.layer6_verification.claim_verification import _claim_terms
+    pipe, claim = pipeline(store), "Patientin nimmt Ramipril"
+    step = PlanStep.model_validate({"step_id": "v", "title": claim, "concept": "verification", "operation": "search_text",
+                                    "filters": {"search_terms": _claim_terms(claim)}})
+    passages = pipe.ex.search_passages(step, 5)[1]
+    extra = pipe._exact_term_passages(claim, [], passages)
+    assert extra and all("ramipril" in passages[p].display_text.lower() for p in extra)
