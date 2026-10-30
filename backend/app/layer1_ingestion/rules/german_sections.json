@@ -1,0 +1,14 @@
+{
+  "diagnoses": ["Diagnosen", "Diagnose", "Hauptdiagnosen", "Nebendiagnosen", "Diagnostik"],
+  "allergies": ["Allergien", "Allergieanamnese", "Unverträglichkeiten"],
+  "history": ["Anamnese", "Eigenanamnese", "Familienanamnese", "Vorgeschichte", "Vorbefunde"],
+  "discharge_medication": ["Entlassungsmedikation", "Medikation bei Entlassung", "Entlassmedikation"],
+  "admission_medication": ["Aufnahmemedikation", "Medikation bei Aufnahme"],
+  "medication": ["Medikation", "Medikamentöse Therapie", "Dauermedikation"],
+  "laboratory": ["Laborbefund", "Laborwerte", "Labor", "Laboruntersuchungen"],
+  "vitals": ["Vitalparameter", "Vitalzeichen", "Vitalwerte"],
+  "clinical_findings": ["Befunde", "Erhobene Befunde", "Befund", "Klinischer Status", "Interne-Status präsens", "Status praesens", "Untersuchungsbefund", "Mikroskopischer Befund", "Makroskopischer Befund", "Immunhistologisches Profil", "Hormonrezeptorstatus", "Gesamtbeurteilung", "Befundzusammenfassung", "Radiologischer Befund", "Histopathologischer Befund"],
+  "clinical_course": ["Therapie und Verlauf", "Verlauf", "Krankheitsverlauf", "Behandlung und Verlauf"],
+  "plan": ["Weiteres Procedere", "Procedere", "Empfehlungen", "Empfehlung", "Weiterbehandlung", "Therapieempfehlung"],
+  "procedures": ["Untersuchungen", "Durchgeführte Untersuchungen", "Folgende Untersuchungen wurden durchgeführt"]
+}

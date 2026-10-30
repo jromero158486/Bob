@@ -1,0 +1,12 @@
+# No patient data nor exports in source control
+.env
+*.sqlite
+/data/
+/private_data/
+/exports/
+*.bioc.json
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+*.zip
