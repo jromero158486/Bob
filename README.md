@@ -1,8 +1,11 @@
-# Levriq
+# LEVRIQ
+
+![LEVRIQ Clinical Interface](docs/levriq.png)
 
 **The right patient information for the right clinician, with evidence you can check.**
 
-Healthcare Hackathon Vienna 2026 · **Track 1: Clinical Documentation** (IBM synthetic patient) · Repository: **LEVRIQ**  
+Healthcare Hackathon Vienna 2026 · **Track 1: Clinical Documentation** (IBM synthetic patient) · Repository: **LEVRIQ**
+
 **[Live demo](https://screenshot-stitchery-studio.lovable.app)** · [Track 1 metrics](docs/TRACK1_METRICS.md) ·
 [Blind evaluation](docs/ADVERSARIAL_EVAL.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md) ·
 Frontend repo: [screenshot-match](https://github.com/jromero158486/screenshot-match)
