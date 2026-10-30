@@ -7,17 +7,21 @@ name = "clinical-ai-platform"
 version = "0.1.0"
 description = "German clinical ingestion with exact evidence provenance (not a medical device)"
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.6,<3"]
+dependencies = ["pydantic>=2.6,<3", "sqlalchemy>=2.0,<3", "alembic>=1.13,<2"]
 
 [project.optional-dependencies]
 clinical = ["spacy>=3.7,<4", "medspacy>=1.3,<2", "bioc>=2.1,<3"]
-dev = ["pytest>=8"]
+postgres = ["psycopg[binary]>=3.1,<4"]
+api = ["fastapi>=0.110,<1", "uvicorn[standard]>=0.29"]
+dev = ["pytest>=8", "httpx>=0.27"]
 
 [tool.setuptools.packages.find]
 include = ["backend*"]
 
 [tool.setuptools.package-data]
 "backend.app.layer1_ingestion" = ["rules/*.json"]
+"backend.app.layer2_extraction" = ["resources/*.json"]
+"backend.app.layer3_store" = ["migrations/*.py", "migrations/*.mako", "migrations/versions/*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
