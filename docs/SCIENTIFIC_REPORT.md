@@ -17,6 +17,21 @@ and scored on our data. Details and every number: `docs/research/EXPERIMENTS.md`
 | 6 Verification | Strict citation integrity (document version, patient, passage, offsets, quote, checksum); value/negation support checks; conflict detection; VeriFact-style claim verification (`POST /api/verify`) |
 | 7 Presentation | FastAPI with a stable OpenAPI contract (`docs/openapi.json`, TS types) and a React UI where citations open the original German passage |
 
+## Status classes
+
+- **Implemented and executed in the main demo flow (`POST /api/tasks`, `POST /api/v1/clinical-tasks`):** Layer 1
+  source mapping + medSpaCy sectionizer, Layer 2 German rules + ConText, Layer 3 PostgreSQL/pgvector, Layer 4 rule
+  planner (validated require-term and ATC filters), Layer 5 structured-first retrieval with BGE-M3 dense passage
+  search, Layer 6 strict citation integrity + deterministic value/negation support + conflict detection, Layer 7
+  Lovable frontend on the live API (`/api/v1`, repo jromero158486/screenshot-match).
+- **Optional integrations (implemented and executed, opt-in, not in the main flow):** VeriFact-style claim
+  verification with multilingual NLI ("Verify clinical statement" → `POST /api/v1/verify-statement`, never run
+  automatically); Groq LLM planner (`PLANNER=llm`; in the demo it dropped the rule planner's safety filters, so
+  dense search returned unrelated passages for undocumented items); Groq judge (`judge=groq`); `hybrid` and
+  `hybrid_rerank` retrieval modes; Groq grounded extraction at ingest (`--llm`); GERNERMED++ (VM only).
+- **Deferred research features (not implemented):** temporal knowledge graph, FHIR R4/ELGA export, constrained
+  ReAct-style agent, SNOMED CT linking, restricted-access benchmarks.
+
 ## Methods actually executed
 
 | Method (paper) | Licence | Status | Key result on our data |
