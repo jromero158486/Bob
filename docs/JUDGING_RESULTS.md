@@ -1,5 +1,7 @@
 # Judge-readiness audit — IBM Track 1
 
+> **First audit, of `8acac85`.** The currently deployed version is `b814c70`; its browser audit (12 correct, 3 partial, 0 failed under strict grading, with 4.1, 4.2 and 5.1 fixed) is in [RELIABILITY_RESULTS.md](RELIABILITY_RESULTS.md#7-production-verification-deployed-published-lovable-app).
+
 **Audit date:** 30 Oct 2026 · **Benchmark:** original IBM Track 1 ZIP (`cases/situations.md`, `cases/expected.json`) · **Patient:** `patient-0000-0001` (8 synthetic German documents)
 
 **System under test**

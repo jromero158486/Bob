@@ -64,24 +64,25 @@ Deferred and **not** in the demo: FHIR export, temporal knowledge graph, autonom
 
 ## IBM Track 1 audit (official 5 situations, 15 questions)
 
-Run on the published app and hosted backend; full details in [docs/JUDGING_RESULTS.md](docs/JUDGING_RESULTS.md).
+Deployed system: Bob **`b814c70`** on Exoscale with the published Lovable app, audited in the browser on 30 Oct 2026. Details: [docs/RELIABILITY_RESULTS.md](docs/RELIABILITY_RESULTS.md) (current) and [docs/JUDGING_RESULTS.md](docs/JUDGING_RESULTS.md) (first audit, `8acac85`).
 
-| Metric | Result |
+| Metric | Result (`b814c70`, strict grading: answer visible without expanding anything) |
 |---|---|
-| Correct answers, visible without clicking | **12/15**: 2 partial (ED cause link, follow-up interval), 1 failed (kidney function not flagged as undocumented) |
-| Traceability | **100%**: 456/456 displayed facts linked; 747/747 links reproduce the exact original passage |
-| Invented facts | **0 found** in manual review of the answer facts |
+| Correct answers | **12/15 correct, 3 partial, 0 failed.** The three partials are missing qualifiers: "normal LV function" appears only in the source; "no later HbA1c" is not stated; the 67 kg weight shows the letter date, not the visit date. The first audit (12/15 under a more lenient reading) had 4.1, 4.2 and 5.1 partial or failed; all three are now correct. |
+| Traceability | **100%**: every displayed fact is linked; 0 bad evidence links in all 27 audited tasks |
+| Invented facts | **0 found** in the manual review of the answer facts |
 | Contradictions | 8 flagged: 7 real, 1 false alarm (net +6); changes over time are not flagged |
-| Slowest screen | **1.9 s** (target < 10 s) |
+| Slowest screen | **2.2 s** in the browser (target < 10 s); all five together 7.8 s |
+| New tasks | 10 English/German tasks: same essential facts and citations in both languages. 12 edge cases: 11 pass, 1 partial |
 
 ## Early evaluation
 
 On **one synthetic IBM patient (8 documents)**, our internal evaluation found:
 
 - **Passage fact recall@10:** BGE-M3 dense retrieval **57%** versus **9%** for keyword-only retrieval (28 bilingual queries).
-- **Claim checking:** **0 false-supported claims** in a small 34-claim evaluation with deterministic checks plus multilingual NLI; contradiction recall was **55%**.
-- **English ↔ German:** 5 new task pairs and 6 statement pairs, checked by hand. Results and the fixes (on a branch) are in [docs/MULTILINGUAL_RESULTS.md](docs/MULTILINGUAL_RESULTS.md).
-- **Reliability (branch, not deployed):** IBM 15/15 on the API screens, 12 edge cases (out-of-scope, requests to invent, missing vs. negative findings, synonyms), `locale` support and the Gemini assessment: [docs/RELIABILITY_RESULTS.md](docs/RELIABILITY_RESULTS.md).
+- **Claim checking:** **0 false-supported claims** in a small 34-claim held-out evaluation with deterministic checks plus multilingual NLI; contradiction recall **82%**, support recall 50%.
+- **English ↔ German:** 5 new task pairs and 6 statement pairs, checked by hand: [docs/MULTILINGUAL_RESULTS.md](docs/MULTILINGUAL_RESULTS.md).
+- **Reliability (deployed):** 12 edge cases (out-of-scope questions, requests to invent, missing vs. negative findings, synonyms), the `locale` parameter, and the assessment of an optional Gemini planner (not integrated): [docs/RELIABILITY_RESULTS.md](docs/RELIABILITY_RESULTS.md).
 
 These are **preliminary, small-sample engineering results**, not evidence of clinical safety or generalization. See the [scientific report](docs/SCIENTIFIC_REPORT.md) for methods, baselines and limitations.
 
@@ -89,12 +90,14 @@ These are **preliminary, small-sample engineering results**, not evidence of cli
 
 This is a **research prototype using synthetic hackathon data**, not a medical device. A *supported* claim means that it matches the cited record, **not that it has been clinically verified**. Advanced NLI verification is optional; the main response prioritizes speed and strict source integrity. The demo does not implement hospital-grade authentication or patient authorization; the demo token is visible in the public web app and only keeps out casual traffic.
 
-**Known gaps from the IBM audit:**
-- Implicit contrast-imaging context does not trigger the kidney-function check.
-- Causal links and follow-up intervals stay in the cited passages instead of the answer line.
+**Known gaps (deployed version):**
+- Three answers lack a qualifier, listed in the audit table above.
 - Conflicts show explanations with source buttons rather than side-by-side passages.
-- Some screens include extra, older facts.
-- Claim verification does not map English generic drug names ("aspirin").
-- Everything was evaluated on **one synthetic patient**, and the 15 questions informed the rule vocabulary.
+- Quoted negatives (e.g. "Kein Perikarderguß") are labelled "Documented", not "Documented negative".
+- German answers keep English fact lines; headings, notices and all source quotes follow the requested language.
+- Some screens include extra, older facts; time windows such as "from the June 2015 stay" are not parsed.
+- Claim verification does not match English dosing wording ("three times daily") or the English contrast-allergy phrasing; these come back as "not documented", never as a false confirmation.
+- Out-of-scope detection uses word lists.
+- Everything was evaluated on **one synthetic patient**. The 15 questions and the edge-case tasks informed the rules, so they are regression tests, not held-out validation.
 
 **Project resources:** [IBM judging results](docs/JUDGING_RESULTS.md) · [IBM demo script](docs/DEMO_SCRIPT_IBM.md) · [Video script](docs/DEMO_VIDEO_SCRIPT.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md) · [Demo runbook](docs/DEMO_RUNBOOK.md) · [Windows backup setup](docs/WINDOWS_SETUP.md) · [Security limitations](docs/SECURITY_AND_AUTH.md)
