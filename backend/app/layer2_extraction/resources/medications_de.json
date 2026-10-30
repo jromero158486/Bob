@@ -1,0 +1,31 @@
+{
+  "version": "med-lexicon-de-0.1",
+  "license_note": "ATC codes from the public WHO ATC classification (codes only, hand-curated subset). Brand names are common Austrian/German trade names. Not a complete drug database.",
+  "entries": [
+    {"ingredient": "acetylsalicylic acid", "atc": "B01AC06", "class": "platelet aggregation inhibitor", "names": ["Thrombo ASS", "ThromboASS", "Aspirin", "ASS", "Acetylsalicylsäure"]},
+    {"ingredient": "metformin", "atc": "A10BA02", "class": "biguanide antidiabetic", "names": ["Glucophage", "Metformin"]},
+    {"ingredient": "simvastatin", "atc": "C10AA01", "class": "statin", "names": ["Zocor", "Simvastatin"]},
+    {"ingredient": "candesartan", "atc": "C09CA06", "class": "angiotensin II receptor blocker", "names": ["Blopress", "Atacand", "Candesartan"]},
+    {"ingredient": "colecalciferol", "atc": "A11CC05", "class": "vitamin D", "names": ["Oleovit D3", "Oleovit", "Colecalciferol", "Cholecalciferol", "Vitamin D3"]},
+    {"ingredient": "alendronic acid", "atc": "M05BA04", "class": "bisphosphonate", "names": ["Alendronat", "Fosamax", "Alendronsäure"]},
+    {"ingredient": "pioglitazone", "atc": "A10BG03", "class": "thiazolidinedione antidiabetic", "names": ["Actos", "Pioglitazon"]},
+    {"ingredient": "exenatide", "atc": "A10BJ01", "class": "GLP-1 receptor agonist", "names": ["Byetta", "Bydureon", "Exenatid"]},
+    {"ingredient": "glyceryl trinitrate", "atc": "C01DA02", "class": "nitrate", "names": ["Nitro-Spray", "Nitrospray", "Nitroglycerin", "Glyceroltrinitrat"]},
+    {"ingredient": "bisoprolol", "atc": "C07AB07", "class": "beta blocker", "names": ["Bisoprolol", "Concor"]},
+    {"ingredient": "metoprolol", "atc": "C07AB02", "class": "beta blocker", "names": ["Metoprolol", "Beloc"]},
+    {"ingredient": "ramipril", "atc": "C09AA05", "class": "ACE inhibitor", "names": ["Ramipril", "Tritace"]},
+    {"ingredient": "amlodipine", "atc": "C08CA01", "class": "calcium channel blocker", "names": ["Amlodipin", "Norvasc"]},
+    {"ingredient": "atorvastatin", "atc": "C10AA05", "class": "statin", "names": ["Atorvastatin", "Sortis"]},
+    {"ingredient": "pantoprazole", "atc": "A02BC02", "class": "proton pump inhibitor", "names": ["Pantoprazol", "Pantoloc"]},
+    {"ingredient": "clopidogrel", "atc": "B01AC04", "class": "platelet aggregation inhibitor", "names": ["Clopidogrel", "Plavix"]},
+    {"ingredient": "apixaban", "atc": "B01AF02", "class": "direct factor Xa inhibitor", "names": ["Apixaban", "Eliquis"]},
+    {"ingredient": "rivaroxaban", "atc": "B01AF01", "class": "direct factor Xa inhibitor", "names": ["Rivaroxaban", "Xarelto"]},
+    {"ingredient": "enoxaparin", "atc": "B01AB05", "class": "low molecular weight heparin", "names": ["Enoxaparin", "Lovenox"]},
+    {"ingredient": "furosemide", "atc": "C03CA01", "class": "loop diuretic", "names": ["Furosemid", "Lasix"]},
+    {"ingredient": "levothyroxine", "atc": "H03AA01", "class": "thyroid hormone", "names": ["Levothyroxin", "Euthyrox", "Thyrex"]},
+    {"ingredient": "insulin glargine", "atc": "A10AE04", "class": "long-acting insulin", "names": ["Insulin glargin", "Lantus"]},
+    {"ingredient": "tamoxifen", "atc": "L02BA01", "class": "anti-estrogen", "names": ["Tamoxifen"]},
+    {"ingredient": "letrozole", "atc": "L02BG04", "class": "aromatase inhibitor", "names": ["Letrozol", "Femara"]},
+    {"ingredient": "anastrozole", "atc": "L02BG03", "class": "aromatase inhibitor", "names": ["Anastrozol", "Arimidex"]}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "version": "allergen-lexicon-de-0.1",
+  "entries": [
+    {"substance": "iodinated contrast media", "patterns": ["\\bKM\\b", "Kontrastmittel", "Jodkontrastmittel"]},
+    {"substance": "penicillin", "patterns": ["Penicillin"]},
+    {"substance": "drug (unspecified)", "patterns": ["Arzneimittel", "Medikamenten"]},
+    {"substance": "latex", "patterns": ["Latex"]},
+    {"substance": "nickel", "patterns": ["Nickel"]}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": "proc-lexicon-de-0.1",
+  "license_note": "Recognition patterns only. Austrian MEL procedure codes are not integrated.",
+  "entries": [
+    {"display": "Cranial CT", "patterns": ["Schädel-CT", "\\bc?CCT\\b"]},
+    {"display": "Echocardiography", "patterns": ["Transthorakale\\w*\\s+Echokardiographie", "Echokardiographie", "Herzecho", "\\bTTE\\b"]},
+    {"display": "Carotid duplex ultrasound", "patterns": ["Duplex-?\\s?[Ss]onographie(?:\\s+der\\s+(?:Halsarterien|Karotisgefäße|hirnversorgenden\\s+Halsarterien))?", "[CK]arotis-Doppler", "Doppler/Duplex\\s+Sonographie", "US\\s+Hirnversorgende\\s+Arterien"]},
+    {"display": "Holter ECG", "patterns": ["Langzeit-EKG", "LZ-EKG"]},
+    {"display": "24h ambulatory blood pressure monitoring", "patterns": ["24h-RR(?:-Messung)?"]},
+    {"display": "ECG", "patterns": ["(?<![-\\w])EKG\\b", "Herz-?EKG"]},
+    {"display": "Mammography", "patterns": ["Vorsorge-Mammographie", "Mammographie\\w*", "Mammogarphie"]},
+    {"display": "Breast/axilla ultrasound", "patterns": ["Sonographie\\s+der\\s+Brust(?:\\+Axilla)?", "Ultraschalluntersuchung\\s+der\\s+(?:linken|rechten)\\s+Brust"]},
+    {"display": "Core needle biopsy", "patterns": ["(?:ultraschallgezielte\\s+)?Stanzbiopsie", "ultraschallgezielte\\s+Biopsie"]},
+    {"display": "Quadrantectomy", "patterns": ["Quadrantenresektion"]},
+    {"display": "Intraoperative radiotherapy", "patterns": ["\\bIORT\\b", "intraoperative[rn]?\\s+Bestrahlung"]},
+    {"display": "Cholecystectomy", "patterns": ["\\bCHE\\b", "Cholezystektomie"]},
+    {"display": "Ophthalmology consultation", "patterns": ["Konsil\\s+für\\s+Augenheilkunde", "Augenkonsil", "augenkonsiliarische\\s+Be\\w+"]},
+    {"display": "Ophthalmology follow-up", "patterns": ["Augenkontrollen", "augenärztliche\\s+Kontrollen"]},
+    {"display": "Blood pressure checks", "patterns": ["Blutdruckkontrollen"]},
+    {"display": "Digital rectal examination", "patterns": ["Rektale\\s+Untersuchung"]},
+    {"display": "Tumour board review", "patterns": ["Tumorboard"]},
+    {"display": "Histopathology", "patterns": ["Histologie(?:-Befund)?", "Histopathologische\\w*\\s+Befund"]}
+  ]
+}

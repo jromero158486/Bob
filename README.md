@@ -1,6 +1,18 @@
-# Clinical AI Platform — Step 1: Document Processing & Provenance
+# Clinical AI Platform — Layers 1–2: Provenance & Clinical Extraction
 
-**Working milestone:** Layer 1 only. This is not a medical device and does not verify clinical truth. Layer 2–7 remain next steps.
+**Working milestones:** Layer 1 (ingestion/provenance) and Layer 2 (evidence-linked extraction, Milestone A). This is not a medical device and does not verify clinical truth. Layers 3–7 are next.
+
+Requires Python >= 3.11. Quick start with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -e '.[clinical,dev]'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m backend.app.tools.extract_layer2 --input /private/data/patient-0000-0001 --show medication,allergy
+.venv/bin/python -m backend.app.tools.crosscheck_ibm --patient-dir /private/data/patient-0000-0001   # evaluation only
+CLINICAL_IBM_DATA=/private/data/patient-0000-0001 .venv/bin/python -m pytest -q   # + private-data integration test
+```
+
+Layer 2 design, research components, licences and GERNERMED++ setup: `docs/LAYER2_EXTRACTION.md`.
 
 This package intentionally **does not distribute IBM's original `data/` folder** or generated copies of it. Use the private hackathon ZIP on your machine. All offsets are Unicode codepoint positions in the *original JSON `text` string*, not UTF-8 byte offsets.
 
@@ -51,7 +63,7 @@ python -m backend.app.tools.ingest_layer1 --input '/private/AIM-hack-track1-ship
 6. **Integrity verifier:** raw slice equals source, checksum matches, no duplicate passage IDs, no uncovered non-whitespace normalized characters.
 7. **Optional BioC export:** passage-level offsets for annotation tools and future interoperability.
 
-The parser does **not** infer diagnoses, ingredient codes, dosage meaning, normal ranges or clinical correctness; Layer 2 will do extraction. It does not currently parse arbitrary PDFs, OCR or production HL7 CDA/FHIR documents. Its adapters interface makes those additions possible, but they still require implementation and evaluation.
+Layer 1 itself does **not** infer diagnoses, ingredient codes, dosage meaning, normal ranges or clinical correctness; Layer 2 will do extraction. It does not currently parse arbitrary PDFs, OCR or production HL7 CDA/FHIR documents. Its adapters interface makes those additions possible, but they still require implementation and evaluation.
 
 ## Papers and references
 

@@ -1,0 +1,24 @@
+{
+  "version": "obs-lexicon-de-0.1",
+  "license_note": "LOINC codes used only where the mapping is unambiguous (LOINC is free to use with attribution, https://loinc.org/license). Others are intentionally uncoded.",
+  "entries": [
+    {"name": "body_height", "loinc": "8302-2", "display": "Body height", "unit": "cm", "names": ["Körpergröße", "Größe"]},
+    {"name": "body_weight", "loinc": "29463-7", "display": "Body weight", "unit": "kg", "names": ["Körpergewicht", "Gewicht"]},
+    {"name": "bmi", "loinc": "39156-5", "display": "Body mass index", "unit": "kg/m2", "names": ["BMI"]},
+    {"name": "body_temperature", "loinc": "8310-5", "display": "Body temperature", "unit": "°C", "names": ["Körpertemperatur", "Temperatur"]},
+    {"name": "heart_rate", "loinc": "8867-4", "display": "Heart rate", "unit": "/min", "names": ["Herzfrequenz", "HF", "Puls"]},
+    {"name": "lvef", "loinc": "10230-1", "display": "Left ventricular ejection fraction", "unit": "%", "names": ["LVEF", "EF", "Ejektionsfraktion"]},
+    {"name": "hba1c", "loinc": "4548-4", "display": "Hemoglobin A1c", "unit": "%", "names": ["HbA1c"]},
+    {"name": "ki67", "loinc": null, "display": "Ki-67 proliferation index", "unit": "%", "names": ["Ki-?67(?:-Proliferationsrate)?"]},
+    {"name": "mmse", "loinc": null, "display": "Mini-Mental State Examination", "unit": "/30", "names": ["MMSE"]},
+    {"name": "tapse", "loinc": null, "display": "TAPSE", "unit": "mm", "names": ["TAPSE"]}
+  ],
+  "blood_pressure": {"loinc_panel": "85354-9", "loinc_systolic": "8480-6", "loinc_diastolic": "8462-4",
+    "names": ["24-Mittelwert", "24h-Mittelwert", "Tagesmittelwert", "Nachtmittelwert", "Blutdruckentgleisung", "Blutdruckspitzen", "RR-Spitzen", "RR bei Aufnahme", "Blutdruck", "RR"]},
+  "receptors": [
+    {"name": "estrogen_receptor", "display": "Estrogen receptor status", "names": ["Östrogenrezeptor"]},
+    {"name": "progesterone_receptor", "display": "Progesterone receptor status", "names": ["Progesteronrezeptor"]},
+    {"name": "hormone_receptor", "display": "Hormone receptor status", "names": ["Hormonrezeptor(?:status)?"]},
+    {"name": "her2", "display": "HER2 status", "names": ["Her2neu(?:-Expression)?", "HER-?2"]}
+  ]
+}
