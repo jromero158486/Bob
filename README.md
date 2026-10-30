@@ -81,7 +81,7 @@ challenge ZIP.
 2. **Start the stack:**
 
 ```bash
-git clone https://github.com/jromero158486/Bob.git && cd Bob
+git clone https://github.com/jromero158486/LEVRIQ.git && cd LEVRIQ
 IBM_DATA_DIR=/path/to/AIM-hack-track1-shipit-main/data RERANKER=none docker compose up --build -d
 curl -s localhost:8000/api/health        # {"status":"ok", ...}; the first start downloads models (several minutes)
 curl -s localhost:8000/api/v1/patients   # patient-0000-0001, 8 documents
@@ -146,7 +146,7 @@ experiments and the production audit: [docs/TRACK1_METRICS.md](docs/TRACK1_METRI
 
 Reviewer identity is a fixed demo user (no authentication). In the deployed version, escalations and corrections
 are saved but show as unreviewed after a refresh, and the sidebar counts reviewed items too. A tested fix is in
-[Bob #4](https://github.com/jromero158486/Bob/pull/4) and
+[Bob #4](https://github.com/jromero158486/LEVRIQ/pull/4) and
 [screenshot-match #3](https://github.com/jromero158486/screenshot-match/pull/3); it is not deployed.
 
 ## Limitations, privacy and data use
