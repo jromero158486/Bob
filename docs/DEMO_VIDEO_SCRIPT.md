@@ -13,4 +13,4 @@ Recorded on the published app (https://screenshot-stitchery-studio.lovable.app, 
 | 1:45–2:00 | README metrics table | "Limits: 12 of 15 official answers are complete and 3 are partial. One false finding, atrial fibrillation, comes from a question line in a report. Results on new questions are preliminary. Synthetic data only; Lumen supports clinicians, it doesn't replace them." |
 
 Use the carotid left/right item (still pending on the live app). Backup if it was already reviewed: *Inconsistent admission date in one document* (10/04/2016 vs 12.04.2016). Do not use the 140/90 vs 145/90 mmHg item: it is a small measurement difference, which the IBM README counts as a false alarm. Do not demonstrate Escalate or Correct live: in the deployed version they show as unreviewed after a refresh (fix
-prepared in Bob PR #4 / screenshot-match PR #3, not deployed). 
+prepared in LEVRIQ PR #4 / screenshot-match PR #3, not deployed). 

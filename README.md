@@ -146,7 +146,7 @@ experiments and the production audit: [docs/TRACK1_METRICS.md](docs/TRACK1_METRI
 
 Reviewer identity is a fixed demo user (no authentication). In the deployed version, escalations and corrections
 are saved but show as unreviewed after a refresh, and the sidebar counts reviewed items too. A tested fix is in
-[Bob #4](https://github.com/jromero158486/LEVRIQ/pull/4) and
+[LEVRIQ #4](https://github.com/jromero158486/LEVRIQ/pull/4) and
 [screenshot-match #3](https://github.com/jromero158486/screenshot-match/pull/3); it is not deployed.
 
 ## Limitations, privacy and data use
