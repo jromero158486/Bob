@@ -1,12 +1,17 @@
-# Two-minute demo video script
+# Two-minute demo video script (what works and what does not)
+
+Recorded on the published app (https://screenshot-stitchery-studio.lovable.app, backend `b814c70`). Keep to 2:00.
 
 | Time | Screen | Voice-over |
 |---|---|---|
-| 0:00–0:15 | Title, then the live app with the **Live backend** badge | "A patient's history is spread over German letters, reports and medication lists. Lumen Clinical gives each clinician the facts their task needs, linked to the exact source passage." |
-| 0:15–0:40 | S1: role *Anaesthetist*, paste the pre-op situation; result in about 1.5 s | "Any role, any question, in German or English. For the anaesthetist: antiplatelet drug with dose and schedule, the contrast allergy with its reactions, and cardiac function, without opening anything." |
-| 0:40–0:55 | Click a citation → German letter with the highlighted span | "Every fact links to the original document; the highlight comes from exact character offsets, so nothing is paraphrased away." |
-| 0:55–1:15 | S3: role *General practitioner*, diabetes review; scroll the weight block, then **Medications** for candesartan 2015 vs 2016 | "Same patient, different task: diabetes drugs with doses, the latest HbA1c and its date, the weight trend. Changes over time are shown as changes, not as errors." |
-| 1:15–1:30 | S5 follow-ups: "no later document records that it took place"; **Not documented** vs **Documented negative** | "Lumen distinguishes 'not documented' from 'documented absent', which is how open follow-ups surface." |
-| 1:30–1:45 | Conflicts block (BMI vs height/weight, two admission dates), then one review decision | "Inconsistencies in the record are flagged for human review, not silently resolved." |
-| 1:45–1:55 | **Verify clinical statement**: `Patient nimmt ASS. HbA1c 7,9 %. Penicillinallergie.` | "Optionally, a multilingual NLI model checks a statement against the record: supported, contradicted, or not addressed." |
-| 1:55–2:00 | Seven-layer diagram from the README | "Seven layers, open models, hosted in Vienna on Exoscale, on synthetic data. It supports clinical review; it does not replace clinical judgment." |
+| 0:00–0:12 | Live app, **Live backend** badge, patient overview | "A patient's history is spread across German letters, reports and medication lists. Lumen Clinical shows each clinician what their task needs, linked to the exact source passage." |
+| 0:12–0:35 | S1: role *Anaesthetist*, paste the pre-op situation; result in about 2 s | "Any role, any task, in English or German. For the anaesthetist: Thrombo ASS 100 mg in the morning, the contrast allergy with its reactions, and the 2015 echo, with no clicking." |
+| 0:35–0:47 | Click a citation → German letter with the highlighted span | "Every fact links to the original document. The highlight uses exact character offsets." |
+| 0:47–1:05 | S3: *General practitioner*, diabetes review; weight 78 → 67 → 66 kg; **Medications** candesartan 2015 vs 2016; **Timeline** | "Same patient, different task: diabetes drugs with doses, the latest HbA1c and its date, and the weight loss over a year. Changes over time are shown as changes, not as errors." |
+| 1:05–1:20 | S4: **Not documented: Kidney function**; **Potential conflicts** (BMI vs height/weight, two admission dates) | "Lumen separates 'not documented' from 'documented absent', and flags passages that cannot all be true, with links to each passage." |
+| 1:20–1:40 | **Review**: open the BP discrepancy, inspect both sources, Approve with a comment, refresh → "Human reviewed · approved" | "The AI flags; the clinician inspects the evidence and records the decision. It is stored separately and never changes the original documents." |
+| 1:40–2:00 | README metrics table | "What does not work yet: on the official 15 questions we get 12 fully correct and 3 partial. A false 'atrial fibrillation' diagnosis is extracted from a question in a Holter request. On 20 new questions, 5 were fully correct and 11 partial: false premises are not corrected, and some missing items are not flagged. Escalated reviews are not yet shown after a refresh. Synthetic data only; it supports clinicians, it does not replace them." |
+
+Do not demonstrate Escalate or Correct live: in the deployed version they show as unreviewed after a refresh (fix
+prepared in Bob PR #4 / screenshot-match PR #3, not deployed). Recording of the review flow: in the team's
+submission folder.
