@@ -109,3 +109,19 @@ def test_short_claim_gets_evidence_row_naming_the_drug(store):
     passages = pipe.ex.search_passages(step, 5)[1]
     extra = pipe._exact_term_passages(claim, [], passages)
     assert extra and all("ramipril" in passages[p].display_text.lower() for p in extra)
+
+
+def test_cross_language_abbreviations_and_brand_names_match_evidence():
+    from backend.app.layer6_verification.claim_verification import content_tokens, deterministic_check, gloss
+    assert deterministic_check("Sie hat eine Kontrastmittelallergie", "KM-Allergie (Übelkeit)")["overlap"] == 1.0
+    lvef = deterministic_check("Die LVEF beträgt 35 %", "Normale LV-Funktion (EF 60%)")
+    assert lvef["overlap"] == 1.0 and lvef["conflicting_values"] == ["35 %"]
+    assert deterministic_check("Patientin nimmt Metformin", "Glucophage 1000mg oral 1 1 1 0 ST")["overlap"] >= 0.5
+    assert "metformin" in gloss("Glucophage 1000mg oral").lower()
+
+
+def test_shared_units_or_generic_words_do_not_make_unrelated_evidence_topical():
+    from backend.app.layer6_verification.claim_verification import deterministic_check
+    # a different drug with a different dose must not become a "conflicting value"
+    assert deterministic_check("Sie nimmt Metformin 1000 mg 1-1-1", "Thrombo ASS 100 mg 1-0-0.")["overlap"] < 0.5
+    assert deterministic_check("Penicillinallergie bekannt", "Familienanamnestisch ist keine Vorbelastung bekannt.")["overlap"] < 0.5

@@ -19,7 +19,7 @@ from pydantic import ValidationError
 from backend.app.layer2_extraction.dates import find_dates
 from backend.app.layer4_planner.contracts import (ALLOWED_OPERATIONS, LLMPlanDraft, PlannerInfo, PlanStep, Presentation,
                                                   StepFilters, TaskPlan, TemporalConstraint, validate_plan)
-from backend.app.layer4_planner.vocabulary import CONCEPTS, GENERIC_DEFAULT, GLOSSARY, ROLE_DEFAULTS
+from backend.app.layer4_planner.vocabulary import CONCEPTS, GENERIC_DEFAULT, GLOSSARY, ROLE_DEFAULTS, TITLE_DE
 
 _ROLE = re.compile(r"(?:I'?m|I am|you are|as)\s+(?:an?\s+|the\s+|her\s+|his\s+)?([A-Za-zÄÖÜäöü' -]{3,60}?)(?=[.,;:!?]| and | who | preparing| reviewing| planning| on | at |$)", re.I)
 _ROLE_DE = re.compile(r"\bich bin\s+(?:ein(?:e)?\s+)?([A-Za-zÄÖÜäöü -]{3,40}?)(?=[.,;:!?]|$)", re.I)
@@ -29,6 +29,20 @@ of in on at to for from with by and or not no yes what which who when how does d
 can will please show list give me my our patient patients clinical task role about any all documented document documents
 situation scheduled night duty arrives whether still open check checks there record records ich bin der die das und
 ist sind mit für von zu im den dem des eine einer ein bitte welche welcher""".split())
+
+
+_DE_WORDS = set("""und oder der die das den dem des vor nach mit sowie bei zum zur von welche welcher ich bin ist sind
+nicht kein keine aktuelle aktuellen frühere früheren weiteres bitte gibt hat wurde wurden dokumentiert""".split())
+_DE_STEMS = re.compile(r"(?:verlauf|einstellung|abnahme|therapie|befunde?|abklärung|kontrolle|anamnese|untersuchung|"
+                       r"medikation|procedere|patientin)$")
+
+
+def request_language(request: str) -> str:
+    """'de' when the request is German (umlaut/ß or at least two German function words), else 'en'."""
+    words = re.findall(r"[a-zäöüß]+", request.casefold())
+    if re.search(r"[äöüß]", request.casefold()) or sum(w in _DE_WORDS or bool(_DE_STEMS.search(w)) for w in words) >= 2:
+        return "de"
+    return "en"
 
 
 def _role(request: str) -> str:
@@ -95,6 +109,8 @@ def _named_allergens(request: str) -> list[str]:
 def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> TaskPlan:
     low = request.casefold()
     role = _role(request)
+    lang = request_language(request)
+    loc = (lambda t: TITLE_DE.get(t, t)) if lang == "de" else (lambda t: t)
     matched = [c for c in CONCEPTS if any(re.search(t, low) for t in c["triggers"])]
     role_ids: list[str] = []
     for pattern, ids in ROLE_DEFAULTS:
@@ -109,7 +125,7 @@ def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> 
     seen_keys = set()
     terms = _search_terms(request)
     for word in _named_allergens(request):  # "penicillin allergy?" must be answered or reported missing explicitly
-        steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=f"{word} allergy",
+        steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=f"{word}-Allergie" if lang == "de" else f"{word} allergy",
                               concept=f"documented {word} allergy",
                               filters=StepFilters(search_terms=[word, f"{word}allergie"], require_terms=[word[:6]])))
     for c in ordered:
@@ -122,17 +138,17 @@ def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> 
                 continue
             seen_keys.add(key)
             steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation=st["operation"],
-                                  title=st.get("title", c["title"]), concept=c["id"],
+                                  title=loc(st.get("title", c["title"])), concept=c["id"],
                                   filters=StepFilters(**filters), temporal=TemporalConstraint(**st.get("temporal", {})),
                                   required=st.get("required", True),
                                   rationale="matched in task text" if c in matched else f"default for role '{role}'"))
     if terms and not any(s.operation == "search_text" for s in steps):
-        steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title="Other relevant passages",
+        steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=loc("Other relevant passages"),
                               concept="free_text", filters=StepFilters(search_terms=terms), required=False,
                               rationale="lexical search for task terms not covered by structured steps"))
     plan = TaskPlan(task_summary=request.strip()[:300], as_of=_as_of(request), steps=steps[:14],
                     presentation=Presentation(audience=role, emphasis=[c["id"] for c in matched],
-                                              language="de" if re.search(r"\b(welche|ich|bin|sind|dokumentiert)\b", low) else "en"),
+                                              language=lang),
                     planner=PlannerInfo(name="heuristic-fallback", detail=detail))
     return validate_plan(plan)
 

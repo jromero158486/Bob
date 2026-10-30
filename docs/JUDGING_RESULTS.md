@@ -103,6 +103,9 @@ Optional claim verification with medication abbreviations (*known limitation 2, 
 
 ## Known limitations (not fixed, to protect the deployed demo)
 
+English/German generalization (10 new tasks, 12 verification checks) and the fixes for it, which are on a branch and not deployed: [MULTILINGUAL_RESULTS.md](MULTILINGUAL_RESULTS.md).
+
+
 1. A situation that mentions contrast imaging only implicitly (4.2) does not trigger the kidney-function missing-information check. An explicit request (N4) does.
 2. Causal statements from the letters (4.1) appear as source passages, not as a linked explanation.
 3. Follow-up statements omit the recommended interval (5.1). The interval is in the cited passage and in the planned-procedures block.

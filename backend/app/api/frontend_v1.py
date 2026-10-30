@@ -7,6 +7,7 @@ The original `/api` endpoints are unchanged.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
@@ -45,6 +46,17 @@ class VerifyIn(BaseModel):
     patientId: str
     statement: str = Field(min_length=3, max_length=5000)
     judge: str = "nli"
+
+
+
+_UI_DE = {"Summary": "Zusammenfassung", "Not documented": "Nicht dokumentiert",
+          "Potential conflicts in the record": "Mögliche Widersprüche in der Dokumentation",
+          "Needs clinician review": "Ärztliche Prüfung erforderlich", "Timeline": "Zeitverlauf"}
+
+
+def _missing_de(msg: str) -> str:
+    m = re.match(r"Not documented in the (\d+) available documents \(as of ([\d-]+)\)\.?$", msg)
+    return f"In den {m.group(1)} verfügbaren Dokumenten nicht dokumentiert (Stand {m.group(2)})." if m else msg
 
 
 def _verification(c: Claim) -> str:
@@ -219,6 +231,8 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
         facts: dict[str, dict] = {}
         blocks: list[dict] = []
         summary = []
+        de = r.plan.presentation.language == "de"
+        ui = (lambda t: _UI_DE.get(t, t)) if de else (lambda t: t)
         for n, s in enumerate(r.sections):
             for c in s.claims:
                 facts[c.claim_id] = _fact_from_claim(c, docs, s.concept)
@@ -231,13 +245,13 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
                            "priority": "high" if n < 3 else "normal", "taskRelevance": "relevant",
                            "factIds": [c.claim_id for c in s.claims]})
         if summary:
-            blocks.insert(0, {"id": "summary", "kind": "summary", "title": "Summary", "priority": "high",
+            blocks.insert(0, {"id": "summary", "kind": "summary", "title": ui("Summary"), "priority": "high",
                               "taskRelevance": "relevant", "sentences": summary})
         if r.missing:
             cur = store.documents(req.patientId)
-            blocks.append({"id": "missing", "kind": "missing_information", "title": "Not documented", "priority": "high",
+            blocks.append({"id": "missing", "kind": "missing_information", "title": ui("Not documented"), "priority": "high",
                            "taskRelevance": "relevant", "items": [
-                               {"id": m.step_id, "label": m.title, "detail": m.message,
+                               {"id": m.step_id, "label": m.title, "detail": _missing_de(m.message) if de else m.message,
                                 "searchedDocumentTypes": sorted({d.document_type or "Dokument" for d in cur}),
                                 "searchedDocuments": [{"id": d.document_id, "title": d.title} for d in cur
                                                       if (d.document_date or "") <= r.as_of],
@@ -256,17 +270,17 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
                                   "evidence": [ev] if ev else []}
                     fids.append(fid)
                 items.append({"id": k.conflict_id, "topic": k.title, "factIds": fids, "explanation": k.explanation})
-            blocks.append({"id": "conflicts", "kind": "conflicts", "title": "Potential conflicts in the record",
+            blocks.append({"id": "conflicts", "kind": "conflicts", "title": ui("Potential conflicts in the record"),
                            "priority": "high" if any(k.relevant_to_task for k in r.conflicts) else "normal",
                            **({"taskRelevance": "relevant"} if any(k.relevant_to_task for k in r.conflicts) else {}),
                            "conflicts": items})
         review = [fid for fid, f in facts.items() if f["verification"] in ("needs_review", "conflicting", "unable_to_verify")
                   and not fid.count(":ev")]
         if review:
-            blocks.append({"id": "review", "kind": "review_needed", "title": "Needs clinician review", "priority": "normal",
+            blocks.append({"id": "review", "kind": "review_needed", "title": ui("Needs clinician review"), "priority": "normal",
                            "factIds": review})
         if r.timeline:
-            blocks.append({"id": "timeline", "kind": "timeline", "title": "Timeline", "priority": "low",
+            blocks.append({"id": "timeline", "kind": "timeline", "title": ui("Timeline"), "priority": "low",
                            "taskRelevance": "supporting",
                            "events": [{"id": f"t{i}", "date": e.date, "dateKind": "document" if e.kind == "document" else "event",
                                        "label": e.label, "category": e.kind} for i, e in enumerate(r.timeline)]})
