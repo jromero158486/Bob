@@ -165,9 +165,9 @@ def plan_task(request: str, provider=None) -> TaskPlan:
         return heuristic_plan(request)
     if hasattr(provider, "timeout"):  # interactive request: bound the planner call, the fallback is reported
         provider = copy.copy(provider)
-        provider.timeout = int(os.environ.get("PLANNER_TIMEOUT", "10"))
+        provider.timeout = int(os.environ.get("PLANNER_TIMEOUT", "8"))
         if hasattr(provider, "retries"):  # rate-limit back-off would blow the interactive budget
-            provider.retries = int(os.environ.get("PLANNER_RETRIES", "1"))
+            provider.retries = int(os.environ.get("PLANNER_RETRIES", "0"))
     try:
         return llm_plan(request, provider)
     except (ValidationError, ValueError, KeyError, RuntimeError, OSError) as exc:

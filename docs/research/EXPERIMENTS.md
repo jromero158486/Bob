@@ -170,3 +170,47 @@ facts (medications, observations, diagnoses) answer most of these questions, and
 At passage level the differences between dense and the hybrid variants are small and inconsistent across metrics
 (equal RRF wins fact recall, tuned wins MRR/nDCG, the opposite of the document-level ranking); only the reranker is
 consistently better, at ~7 s per search step on CPU. 28 queries over one patient: no significance claims.
+
+## §3 Phase 3: VeriFact-inspired claim verification (`python -m evaluation.research.phase3_verification`, commits 5aa5c3f, 5562819)
+
+**What was studied.** Official VeriFact code (github.com/philipchung/verifact, MIT, cloned and read, not run: it
+needs vLLM GPUs, Qdrant and MIMIC-III data). Adopted from it: decomposition into atomic claims (its atomic-claim
+prompt is used by the optional LLM atomizer), per-claim retrieval of patient-scoped evidence (VeriFact: hybrid +
+rerank, top-k 5; ours: the production retrieval mode, k=5), a three-way verdict (Supported / Not Supported / Not
+Addressed; its judge prompt is used by the optional Groq judge), time-aware reference context (claim dates may match
+the evidence document date). Our changes: multilingual NLI judge (mDeBERTa-v3-base-xnli-multilingual-nli-2mil7, MIT,
+revision b5113eb38ab6) as the default, deterministic value/unit, date and clause-level negation checks that **veto**
+support, "Not Supported" split into contradicted vs needs-review, strict citation integrity on every evidence
+citation as a separate stage (failures are dropped and reported), and every non-supported claim routed to review.
+Integrated as `layer6_verification/claim_verification.py`, `POST /api/verify` (additive OpenAPI), NLI served by the
+`models` service (`POST /nli`) in Docker. This is a VeriFact-inspired adaptation, **not a reproduction**: no
+VeriFact-BHC data, no vLLM judge, German instead of English.
+
+**Data.** Author-written synthetic statements about the synthetic IBM patient, labelled against the source documents
+before running any judge (private files). Development set: 44 claims (20 supported, 14 contradicted, 10 not
+addressed; numeric, temporal, negation, paraphrase, semantic, English). Its first run (v1 logic, kept in
+`artifacts/research/phase3_verification_v1_dev.json`) was used for error analysis, which changed the logic (veto
+instead of word-overlap requirement, clause-level negation, generic predicates not topical). A held-out set of 34
+claims (14/11/9) was written **after** that change and before running it. Retrieval `auto` (BGE-M3 dense, pgvector).
+
+**Held-out results (34 claims)**
+
+| Configuration | accuracy | false-support rate | contradiction recall | support recall | review rate | median / max per claim |
+|---|---|---|---|---|---|---|
+| deterministic only | 0.500 | 0.200 | 0.000 | 0.571 | 0.647 | 0.3 s / 0.6 s |
+| deterministic + NLI (default) | 0.676 | **0.000** | 0.545 | 0.571 | 0.765 | 0.6 s / 1.1 s |
+| NLI only (ablation, no veto) | 0.706 | 0.000 | 1.000 | 0.429 | 0.824 | 0.9 s / 2.2 s |
+| deterministic + Groq gpt-oss-120b judge | 0.765 | 0.000 | 0.818 | 0.571 | 0.765 | 0.9 s / 6.0 s |
+
+Development set (44 claims, v2 logic; tuned on, optimistic): deterministic 0.636 / FSR 0.125 / CR 0.429;
+det + NLI 0.659 / 0.042 / 0.571; NLI only 0.636 / 0.042 / 0.714; det + Groq 0.795 / 0.000 / 0.929.
+
+Findings. The deterministic baseline alone wrongly supports 20% of false/unaddressed claims (e.g. a contradicted value
+next to a matching one) and finds no contradictions on the held-out set. Adding the semantic judge removes false
+support on held-out claims; the LLM judge detects most contradictions, NLI about half. Deterministic checks cost
+support recall where our extraction of values is too literal: "47/min" in "HF von 47 - 100 (67)/min" and
+"145/90 mmHg" are not parsed as the claim's value, and "70 %" vs "70% rezeptorpositive" in a passage that also
+contains "100%" made three supported claims "contradicted (deterministic)" — conservative but wrong, and routed to
+review. Not-addressed claims were never marked supported by det + NLI or det + Groq. In Docker the 5-claim German
+smoke text took 1.9 s (deterministic), 4.5 s (NLI) and 40 s (Groq, rate-limited while another evaluation was using
+the same key). 78 claims about one patient, written by the author: no significance claims; no clinician review.
