@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.schemas import (API_VERSION, DocumentOut, PassageOut, PatientSummary, ReviewUpdate, TaskRequest,
                                      TaskResponse)
-from backend.app.api.service import UnknownPatient, patient_conflicts, run_task
+from backend.app.api.schemas import VerifyTextRequest, VerifyTextResponse
+from backend.app.api.service import UnknownPatient, patient_conflicts, run_task, verify_text
 from backend.app.layer3_store.db import make_engine, migrate
 from backend.app.layer3_store.repository import ClinicalStore
 
@@ -100,6 +101,15 @@ def create_app(store: ClinicalStore | None = None, llm=None, run_migrations: boo
     def task(req: TaskRequest):
         try:
             return run_task(store, req.patient_id, req.request, llm, req.retrieval_mode)
+        except UnknownPatient:
+            raise HTTPException(404, f"Unknown patient {req.patient_id}")
+        except ValueError as exc:
+            raise HTTPException(422, str(exc))
+
+    @app.post("/api/verify", response_model=VerifyTextResponse)
+    def verify(req: VerifyTextRequest):
+        try:
+            return verify_text(store, req, llm)
         except UnknownPatient:
             raise HTTPException(404, f"Unknown patient {req.patient_id}")
         except ValueError as exc:

@@ -34,6 +34,15 @@ async def lifespan(_app):
     except EmbeddingsUnavailable as exc:
         STATE["reranker_info"] = None
         STATE["reranker_error"] = str(exc)
+    if os.environ.get("NLI", "on").lower() not in ("none", "off", "0"):
+        from backend.app.layer6_verification.nli import LocalNLI, NLIUnavailable
+        try:
+            nli = LocalNLI()
+            STATE["nli"] = nli
+            STATE["nli_info"] = {"name": nli.name, "revision": nli.revision, "load_seconds": nli.load_seconds}
+            nli.score([("warm-up", "warm-up")])
+        except NLIUnavailable as exc:
+            STATE["nli_error"] = str(exc)
     enc.encode(["warm-up"])  # first forward pass is slow; do it before reporting healthy
     yield
 
@@ -46,6 +55,11 @@ class EncodeIn(BaseModel):
     batch_size: int = Field(default=16, ge=1, le=64)
 
 
+class NLIIn(BaseModel):
+    pairs: list[tuple[str, str]] = Field(max_length=100)
+    batch_size: int = Field(default=16, ge=1, le=64)
+
+
 class RerankIn(BaseModel):
     query: str
     passages: list[str] = Field(max_length=100)
@@ -54,7 +68,8 @@ class RerankIn(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "encoder": STATE.get("encoder_info"), "reranker": STATE.get("reranker_info"),
-            "reranker_error": STATE.get("reranker_error"), "threads": os.environ.get("EMBED_THREADS")}
+            "reranker_error": STATE.get("reranker_error"), "nli": STATE.get("nli_info"),
+            "nli_error": STATE.get("nli_error"), "threads": os.environ.get("EMBED_THREADS")}
 
 
 @app.post("/encode")
@@ -72,3 +87,11 @@ def rerank(body: RerankIn):
         raise HTTPException(503, STATE.get("reranker_error", "reranker not loaded"))
     with LOCK:
         return {"scores": STATE["reranker"].score(body.query, body.passages)}
+
+
+@app.post("/nli")
+def nli(body: NLIIn):
+    if "nli" not in STATE:
+        from fastapi import HTTPException
+        raise HTTPException(503, STATE.get("nli_error", "NLI model not loaded"))
+    return {"scores": STATE["nli"].score(body.pairs, body.batch_size)}

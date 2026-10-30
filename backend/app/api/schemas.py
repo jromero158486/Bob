@@ -166,3 +166,51 @@ class ReviewUpdate(BaseModel):
     status: Literal["pending", "accepted", "rejected", "needs_more_info"]
     reviewer: str = Field(min_length=1, max_length=128)
     comment: str | None = None
+
+
+VerifyJudge = Literal["nli", "groq", "none"]
+
+
+class VerifyTextRequest(BaseModel):
+    patient_id: str
+    text: str = Field(min_length=3, max_length=5000, description="Free text (e.g. a draft summary) to check")
+    as_of: str | None = Field(None, description="ISO date; evidence after it is ignored. Default: latest document")
+    judge: VerifyJudge = Field("nli", description="nli (multilingual NLI), groq (LLM judge), none (deterministic)")
+    atomizer: Literal["rules", "llm"] = "rules"
+    retrieval_mode: RetrievalMode | None = None
+
+
+class EvidenceOut(BaseModel):
+    citation: Citation
+    entailment: float | None = None
+    contradiction: float | None = None
+    checks: dict = {}
+
+
+class AtomicClaimOut(BaseModel):
+    text: str
+    start: int | None = Field(None, description="Offset in the submitted text (rule atomizer only)")
+    end: int | None = None
+    verdict: Literal["supported", "contradicted", "not_addressed"]
+    needs_review: bool
+    review_reason: str
+    clinically_verified: Literal[False] = Field(False, description="Always false: support by cited record text is not clinical verification")
+    deterministic: dict = {}
+    semantic: dict = {}
+    evidence: list[EvidenceOut] = []
+
+
+class VerifyTextResponse(BaseModel):
+    patient_id: str
+    as_of: str
+    judge_requested: VerifyJudge
+    judge_used: VerifyJudge
+    judge_model: str | None = None
+    atomizer: str
+    retrieval_used: list[str] = []
+    warnings: list[str] = []
+    summary: dict[str, int] = {}
+    claims: list[AtomicClaimOut] = []
+    timings_ms: dict[str, float] = {}
+    disclaimer: str = ("Research prototype on synthetic data. 'supported' means the claim is entailed by cited record "
+                       "text and passes value/date/negation checks; it is not clinical verification.")

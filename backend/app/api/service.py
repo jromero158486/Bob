@@ -72,3 +72,28 @@ def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None,
                         verification=summarize(claims), provenance=prov,
                         timings_ms={"plan": round((t1 - t0) * 1000, 1), "retrieve": round((t2 - t1) * 1000, 1),
                                     "verify": round((t3 - t2) * 1000, 1), "total": round((t3 - t0) * 1000, 1)})
+
+
+def verify_text(store: ClinicalStore, req, llm=None):
+    """Phase 3: VeriFact-style verification of free text against one patient's record (see claim_verification)."""
+    from backend.app.api.schemas import AtomicClaimOut, EvidenceOut, VerifyTextResponse
+    from backend.app.layer6_verification.claim_verification import ClaimVerificationPipeline
+    from backend.app.layer6_verification.verify import ClaimVerifier
+    docs = store.documents(req.patient_id)
+    if not docs:
+        raise UnknownPatient(req.patient_id)
+    as_of = req.as_of or max(d.document_date for d in docs if d.document_date)
+    ex = Executor(store, req.patient_id, as_of, retrieval=req.retrieval_mode)
+    pipe = ClaimVerificationPipeline(ex, ClaimVerifier(store, req.patient_id, as_of, []), req.judge, llm)
+    results, timings = pipe.run(req.text, req.atomizer)
+    claims = [AtomicClaimOut(text=r.claim.text, start=r.claim.start, end=r.claim.end, verdict=r.verdict,
+                             needs_review=r.needs_review, review_reason=r.review_reason, deterministic=r.deterministic,
+                             semantic=r.semantic,
+                             evidence=[EvidenceOut(citation=c, entailment=e, contradiction=x, checks=d)
+                                       for c, e, x, d in r.evidence]) for r in results]
+    summary = {v: sum(c.verdict == v for c in claims) for v in ("supported", "contradicted", "not_addressed")}
+    summary["needs_review"] = sum(c.needs_review for c in claims)
+    return VerifyTextResponse(patient_id=req.patient_id, as_of=as_of, judge_requested=req.judge,
+                              judge_used=pipe.judge_used, judge_model=pipe.judge_model, atomizer=req.atomizer,
+                              retrieval_used=sorted(ex.retrieval_used), warnings=pipe.warnings + ex.retrieval_warnings,
+                              summary=summary, claims=claims, timings_ms=timings)

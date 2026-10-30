@@ -203,6 +203,7 @@ class Executor:
         # validation queries only (docs/research/EXPERIMENTS.md); "equal" reproduces plain RRF.
         self.fusion_weights = parse_fusion_weights(os.environ.get("HYBRID_WEIGHTS", DEFAULT_FUSION))
         self.rrf_k = int(os.environ.get("RRF_K", "10"))
+        self.short_rows = False
         self.retrieval_used: set[str] = set()
         self.retrieval_warnings: list[str] = []
         self.syn = Synthesizer(store, patient_id)
@@ -417,7 +418,11 @@ class Executor:
         return claims
 
     def _eligible(self, p, step: PlanStep) -> bool:
-        if p.passage_type in ("section_heading", "table_header") or len(p.display_text) < 25:
+        if p.passage_type in ("section_heading", "table_header"):
+            return False
+        # Short passages are excluded from task retrieval (dense ranks e.g. "RR: 150/95 mmHg" above relevant
+        # sentences), but claim verification needs short value rows ("Gewicht: 66 kg") as evidence.
+        if len(p.display_text) < 25 and not (self.short_rows and p.passage_type != "sentence"):
             return False
         if len(SIGN_OFF.sub("", p.display_text).strip(" .,;:-")) < 8:  # "befundet: Dr. X vidiert: Dr. Y"
             return False
