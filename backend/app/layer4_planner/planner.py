@@ -79,6 +79,16 @@ def _search_terms(request: str) -> list[str]:
     return out[:12]
 
 
+_ALLERGEN = re.compile(r"\b([A-Za-zÄÖÜäöüß]{4,})[- ]?(?:allergy|allergie|unverträglichkeit|intolerance)", re.I)
+_GENERIC_ALLERGY_WORDS = {"contrast", "kontrastmittel", "drug", "arzneimittel", "medication", "known", "any", "food",
+                          "nahrungsmittel", "medikamenten", "documented", "relevant", "bekannte", "keine"}
+
+
+def _named_allergens(request: str) -> list[str]:
+    return list(dict.fromkeys(m.group(1).capitalize() for m in _ALLERGEN.finditer(request)
+                              if m.group(1).casefold() not in _GENERIC_ALLERGY_WORDS))
+
+
 def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> TaskPlan:
     low = request.casefold()
     role = _role(request)
@@ -95,6 +105,10 @@ def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> 
     steps: list[PlanStep] = []
     seen_keys = set()
     terms = _search_terms(request)
+    for word in _named_allergens(request):  # "penicillin allergy?" must be answered or reported missing explicitly
+        steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=f"{word} allergy",
+                              concept=f"documented {word} allergy",
+                              filters=StepFilters(search_terms=[word, f"{word}-Allergie", f"{word}allergie"])))
     for c in ordered:
         for i, st in enumerate(c["steps"]):
             filters = dict(st.get("filters", {}))

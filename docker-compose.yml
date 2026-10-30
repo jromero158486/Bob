@@ -1,4 +1,5 @@
 # Local:    IBM_DATA_DIR=/private/AIM-hack-track1-shipit-main/data docker compose up --build
+#           (IBM_DATA_DIR = directory containing patient-* folders; mounted read-only)
 # Exoscale: same file on a VM (or point DATABASE_URL at Exoscale DBaaS PostgreSQL and drop the db service).
 services:
   db:
