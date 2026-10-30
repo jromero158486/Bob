@@ -1200,6 +1200,14 @@
       "title": "Search Terms",
       "description": "German/English terms for lexical search"
      },
+     "require_terms": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Require Terms",
+      "description": "Lexical hits must contain one of these substrings (case-insensitive); otherwise the step reports 'not documented'"
+     },
      "statuses": {
       "items": {
        "type": "string"

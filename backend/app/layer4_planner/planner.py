@@ -108,12 +108,12 @@ def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> 
     for word in _named_allergens(request):  # "penicillin allergy?" must be answered or reported missing explicitly
         steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=f"{word} allergy",
                               concept=f"documented {word} allergy",
-                              filters=StepFilters(search_terms=[word, f"{word}-Allergie", f"{word}allergie"])))
+                              filters=StepFilters(search_terms=[word, f"{word}allergie"], require_terms=[word[:6]])))
     for c in ordered:
         for i, st in enumerate(c["steps"]):
             filters = dict(st.get("filters", {}))
             if st["operation"] == "search_text":
-                filters["search_terms"] = terms
+                filters["search_terms"] = filters.get("search_terms") or terms
             key = (st["operation"], json.dumps(filters, sort_keys=True))
             if key in seen_keys:
                 continue

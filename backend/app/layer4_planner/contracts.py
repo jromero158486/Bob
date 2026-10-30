@@ -32,6 +32,9 @@ class StepFilters(BaseModel):
     observation_names: list[str] = Field(default_factory=list, description="Canonical observation names")
     procedure_names: list[str] = Field(default_factory=list, description="Procedure display names (English)")
     search_terms: list[str] = Field(default_factory=list, description="German/English terms for lexical search")
+    require_terms: list[str] = Field(default_factory=list,
+                                     description="Lexical hits must contain one of these substrings (case-insensitive); "
+                                                 "otherwise the step reports 'not documented'")
     statuses: list[str] = Field(default_factory=list, description="e.g. planned, recommended, performed")
 
 

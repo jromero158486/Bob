@@ -390,6 +390,9 @@ class Executor:
             for rank, (p, _) in enumerate(self.store.search_passages(self.pid, t, limit=30)):
                 if p.passage_type in ("section_heading", "table_header") or len(p.display_text) < 25:
                     continue
+                if step.filters.require_terms and not any(r.casefold() in p.display_text.casefold()
+                                                          for r in step.filters.require_terms):
+                    continue
                 d = self.syn.docs.get(p.source_id)
                 if d is None or (d.document_date or "") > self.as_of:
                     continue

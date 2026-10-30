@@ -142,6 +142,7 @@ export type StepFilters = {
   observation_names?: string[];
   procedure_names?: string[];
   search_terms?: string[];
+  require_terms?: string[];
   statuses?: string[];
 };
 

@@ -85,3 +85,10 @@ def test_patients_stay_isolated(store):
     r = run_task(store, "patient-syn-A", "List all medications and diagnoses")
     assert not any(x in c.text for c in claims(r) for x in ("Zylofantin", "Metformin"))
     assert "Ramipril" in LETTER
+
+
+def test_named_allergen_and_smoking_absent_are_reported_missing(store):
+    r = run_task(store, C, "Anaesthesia: is a penicillin allergy or smoking status documented?")
+    titles = {m.title for m in r.missing}
+    assert "Penicillin allergy" in titles and "Smoking status" in titles
+    assert not any("Penicillin" in c.text for c in claims(r))
