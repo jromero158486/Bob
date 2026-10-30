@@ -171,7 +171,8 @@ def _codes_ok(f: ClinicalFact, prefixes: list[str]) -> bool:
 SIGN_OFF = re.compile(r"\b(befundet|vidiert|diktiert|geschrieben|gezeichnet|gez\.|unterschrieben)\s*:?\s*"
                       r"((dr|prof|oa|oä|ass|dipl)\.?\s*)*[\wÄÖÜäöüß.\-]*", re.I)
 RANKINGS = ("lexical", "dense", "sparse", "colbert")
-DEFAULT_FUSION = "equal"
+# Selected on the validation queries by evaluation/research/fusion_tuning.py (nDCG@10, then MRR).
+DEFAULT_FUSION = "dense=1,lexical=1,sparse=0.5,colbert=0"
 
 
 def parse_fusion_weights(spec: str) -> dict[str, float]:
@@ -201,7 +202,7 @@ class Executor:
         # Weighted reciprocal rank fusion for the hybrid modes (weight 0 drops a ranking). Weights are tuned on
         # validation queries only (docs/research/EXPERIMENTS.md); "equal" reproduces plain RRF.
         self.fusion_weights = parse_fusion_weights(os.environ.get("HYBRID_WEIGHTS", DEFAULT_FUSION))
-        self.rrf_k = int(os.environ.get("RRF_K", "60"))
+        self.rrf_k = int(os.environ.get("RRF_K", "10"))
         self.retrieval_used: set[str] = set()
         self.retrieval_warnings: list[str] = []
         self.syn = Synthesizer(store, patient_id)
@@ -482,6 +483,7 @@ class Executor:
                 msg = f"{want} retrieval unavailable ({self.retrieval} requested), lexical fallback used: {exc}"
                 if msg not in self.retrieval_warnings:
                     self.retrieval_warnings.append(msg)
+        self.last_rankings = rankings  # per-ranking lists, for fusion diagnostics/tuning
         if used == "dense":
             fused = rankings["dense"]
         else:
