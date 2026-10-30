@@ -203,6 +203,7 @@ class ClaimVerificationPipeline:
         step = PlanStep.model_validate({"step_id": "verify", "title": claim, "concept": "verification",
                                         "operation": "search_text", "filters": {"search_terms": _claim_terms(claim)}})
         top, passages, _ = self.ex.search_passages(step, self.k)
+        top = top + self._exact_term_passages(claim, top, passages)
         out = []
         for pid in top:
             cit = self.ex.syn.passage_citation(passages[pid])
@@ -211,6 +212,17 @@ class ClaimVerificationPipeline:
             else:
                 self.warnings.append(f"evidence {pid} dropped: citation integrity failed")
         return out
+
+    def _exact_term_passages(self, claim: str, top: list[str], passages: dict, limit: int = 2) -> list[str]:
+        """Lexical hits containing a claim word verbatim, appended to dense evidence: a short claim ("Patient nimmt
+        ASS") embeds close to generic passages, while the medication row naming "ASS" is found lexically."""
+        words = [w for w in content_tokens(claim) if len(w) >= 3]
+        if not words:
+            return []
+        pat = re.compile(r"\b(?:" + "|".join(map(re.escape, words)) + r")\b", re.I)
+        extra = [pid for pid in self.ex.last_rankings.get("lexical", [])
+                 if pid not in top and pat.search(passages[pid].display_text)]
+        return extra[:limit]
 
     def _groq(self, claim: str, cits) -> tuple[float, float]:
         ref = "\n".join(f"[{c.document_date or '?'}] {c.passage_text}" for c in cits)

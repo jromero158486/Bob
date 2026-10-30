@@ -96,3 +96,15 @@ def test_nli_judge_never_supports_without_deterministic_agreement(store):
     assert v["Normale LV-Funktion mit EF 55 %"].verdict == "supported"
     assert v["Normale LV-Funktion mit EF 35 %"].verdict != "supported"
     assert v["Normale LV-Funktion mit EF 55 %"].semantic["judge"] == "nli"
+
+
+
+def test_short_claim_gets_evidence_row_naming_the_drug(store):
+    from backend.app.layer4_planner.contracts import PlanStep
+    from backend.app.layer6_verification.claim_verification import _claim_terms
+    pipe, claim = pipeline(store), "Patientin nimmt Ramipril"
+    step = PlanStep.model_validate({"step_id": "v", "title": claim, "concept": "verification", "operation": "search_text",
+                                    "filters": {"search_terms": _claim_terms(claim)}})
+    passages = pipe.ex.search_passages(step, 5)[1]
+    extra = pipe._exact_term_passages(claim, [], passages)
+    assert extra and all("ramipril" in passages[p].display_text.lower() for p in extra)

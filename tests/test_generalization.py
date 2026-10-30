@@ -92,3 +92,10 @@ def test_named_allergen_and_smoking_absent_are_reported_missing(store):
     titles = {m.title for m in r.missing}
     assert "Penicillin allergy" in titles and "Smoking status" in titles
     assert not any("Penicillin" in c.text for c in claims(r))
+
+
+def test_generic_lab_request_plans_laboratory_values():
+    from backend.app.layer4_planner.planner import heuristic_plan
+    for req in ["Oncologist: current cancer treatment plan and relevant labs", "Hausarzt: aktuelle Laborwerte"]:
+        steps = [s for s in heuristic_plan(req).steps if s.concept == "labs"]
+        assert steps and "hba1c" in steps[0].filters.observation_names
