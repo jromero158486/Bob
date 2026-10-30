@@ -51,7 +51,7 @@ CONCEPTS: list[dict] = [
                   r"glycemic control", r"diabetes review"],
      "steps": [{"operation": "get_observations", "filters": {"observation_names": ["hba1c"]}, "temporal": {"mode": "latest"}}]},
     {"id": "weight", "title": "Body weight and BMI",
-     "triggers": [r"\bweight", r"gewicht", r"\bbmi\b", r"body mass", r"obes", r"lost .*kg"],
+     "triggers": [r"\bweight", r"gewicht", r"\bbmi\b", r"body mass", r"obes", r"lost .*kg", r"diabetes"],
      "steps": [{"operation": "get_observations", "filters": {"observation_names": ["body_weight", "bmi", "body_height"]},
                 "temporal": {"mode": "series"}}]},
     {"id": "blood_pressure", "title": "Blood pressure",

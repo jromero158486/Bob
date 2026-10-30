@@ -1,0 +1,33 @@
+# Local:    IBM_DATA_DIR=/private/AIM-hack-track1-shipit-main/data docker compose up --build
+# Exoscale: same file on a VM (or point DATABASE_URL at Exoscale DBaaS PostgreSQL and drop the db service).
+services:
+  db:
+    image: public.ecr.aws/docker/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: clinical
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clinical}
+      POSTGRES_DB: clinical
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinical"]
+      interval: 3s
+      retries: 20
+  backend:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment:
+      DATABASE_URL: postgresql+psycopg://clinical:${POSTGRES_PASSWORD:-clinical}@db:5432/clinical
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+    volumes: ["${IBM_DATA_DIR:-./private_data/empty}:/data:ro"]
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8000:8000"]
+  frontend:
+    build: { context: ./frontend }
+    depends_on: [backend]
+    ports: ["8080:80"]
+volumes:
+  pgdata: {}

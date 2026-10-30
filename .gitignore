@@ -13,3 +13,5 @@ __pycache__/
 /models/
 *.whl
 /artifacts/
+/private_data/*
+!/private_data/empty/
