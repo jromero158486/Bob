@@ -37,6 +37,9 @@ def _list_items_before_salutation(view: PassageView) -> bool:
     return not seen_salutation and not _SALUTATION.search(view.passage.display_text)
 
 
+_LEAD_NEGATION = re.compile(r"\s*(?:kein(?:e|en|er|es)?|ohne|nicht|ausschluss\s+(?:einer?|von))\s+", re.I)
+
+
 def diagnoses(view: PassageView) -> list[Candidate]:
     p, text = view.passage, view.text
     if p.passage_type in ("table_header", "medication_row"):
@@ -47,6 +50,9 @@ def diagnoses(view: PassageView) -> list[Candidate]:
     if in_list:
         prefix = _STATUS_PREFIX.match(text)
         body_start = prefix.end() if prefix else 0
+        lead_neg = _LEAD_NEGATION.match(text, body_start)
+        if lead_neg:  # "Kein X" as a list item: keep the trigger outside the target so ConText can negate it
+            body_start = lead_neg.end()
         if not matches:
             out.append(Candidate(view, 0, len(text), "diagnosis", text.strip(),
                                  DiagnosisDetails(text=text.strip(), laterality=local_laterality(text, 0, len(text)),

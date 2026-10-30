@@ -7,7 +7,9 @@ over the concept vocabulary. The response always states which planner produced t
 from __future__ import annotations
 
 import json
+import calendar
 import re
+from datetime import date
 
 from pydantic import ValidationError
 
@@ -31,12 +33,33 @@ def _role(request: str) -> str:
     return m.group(1).strip() if m else "clinician"
 
 
+_MONTHS = {m: i for i, names in enumerate([
+    ("januar", "jänner", "january", "jan"), ("februar", "february", "feb"), ("märz", "march", "mar"), ("april", "apr"),
+    ("mai", "may"), ("juni", "june", "jun"), ("juli", "july", "jul"), ("august", "aug"),
+    ("september", "sep", "sept"), ("oktober", "october", "okt", "oct"), ("november", "nov"), ("dezember", "december", "dez", "dec")],
+    1) for m in names}
+_REF = r"(?:as of|as at|on|in|during|by|until|zum|am|im|bis|stand|per)"
+_ISO_REF = re.compile(rf"\b{_REF}\s+(\d{{4}}-\d{{2}}-\d{{2}})\b", re.I)
+_MONTH_REF = re.compile(rf"\b{_REF}\s+({'|'.join(sorted(_MONTHS, key=len, reverse=True))})\.?\s+(\d{{4}})\b", re.I)
+
+
 def _as_of(request: str) -> str | None:
     m = _AS_OF.search(request)
-    if not m:
-        return None
-    dates = [d for d in find_dates(m.group(1)) if d.valid]
-    return dates[0].value if dates else None
+    if m:
+        dates = [d for d in find_dates(m.group(1)) if d.valid]
+        if dates:
+            return dates[0].value
+    m = _ISO_REF.search(request)
+    if m:
+        try:
+            return date.fromisoformat(m.group(1)).isoformat()
+        except ValueError:
+            return None
+    m = _MONTH_REF.search(request)
+    if m:  # "im Januar 2021" -> state at the end of that month
+        y, mo = int(m.group(2)), _MONTHS[m.group(1).casefold()]
+        return date(y, mo, calendar.monthrange(y, mo)[1]).isoformat()
+    return None
 
 
 def _search_terms(request: str) -> list[str]:

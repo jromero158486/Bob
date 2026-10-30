@@ -1,5 +1,5 @@
 {
- "version": "dx-lexicon-de-0.1",
+ "version": "dx-lexicon-de-0.2",
  "license_note": "ICD-10 candidate codes (WHO ICD-10 / Austrian ICD-10 BMSGPK share these categories); hand-curated subset, codes are candidates for review, not billing codes. Entries with code null are recognised but intentionally uncoded.",
  "entries": [
   {
@@ -213,6 +213,24 @@
    "icd10": null,
    "patterns": [
     "Übergewicht"
+   ]
+  },
+  {
+   "display": "Diabetes mellitus, unspecified type",
+   "icd10": "E14",
+   "level": "category",
+   "patterns": [
+    "Diabetes\\s+mellitus(?!\\s+Typ)\\b"
+   ]
+  },
+  {
+   "display": "Chronic kidney disease",
+   "icd10": "N18",
+   "level": "category",
+   "patterns": [
+    "[Cc]hronische[rn]?\\s+Niereninsuffizienz",
+    "\\bCKD\\b",
+    "chronische[rn]?\\s+Nierenerkrankung"
    ]
   }
  ]

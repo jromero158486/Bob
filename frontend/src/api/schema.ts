@@ -9,7 +9,10 @@ export type Citation = {
   passage_text: string;
   original_start: number;
   original_end: number;
+  source_id?: string;
+  source_sha256?: string;
   verified?: boolean;
+  integrity_errors?: string[];
 };
 
 export type Claim = {
@@ -26,6 +29,9 @@ export type Claim = {
   conflict_ids?: string[];
   review_status?: string | null;
   notes?: string[];
+  citation_integrity?: "valid" | "invalid" | "none";
+  support_basis?: "source_values_matched" | "verbatim_passage" | "derived_from_verified_inputs" | "documented_negative" | "absence_in_record" | "none";
+  support_checks?: string[];
 };
 
 export type ConflictOut = {
@@ -195,6 +201,8 @@ export type VerificationSummary = {
   supported?: number;
   contradicted?: number;
   not_addressed?: number;
+  citations_total?: number;
+  citations_valid?: number;
   verification_incomplete?: number;
   checks?: string[];
 };

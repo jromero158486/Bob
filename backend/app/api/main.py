@@ -21,15 +21,35 @@ def _llm():
         return None
 
 
+DEMO_HEADER = "synthetic-data-only; no authentication; not for real patient data"
+
+
 def create_app(store: ClinicalStore | None = None, llm=None, run_migrations: bool = True) -> FastAPI:
+    # There is no user authentication or patient-level authorisation. Refuse to run unless explicitly in demo mode.
+    if os.environ.get("CLINICAL_DEMO_ONLY", "1") != "1":
+        raise RuntimeError("Authentication/authorisation is not implemented (see docs/SECURITY_AND_AUTH.md). "
+                           "Only CLINICAL_DEMO_ONLY=1 with synthetic data is supported.")
+    demo_token = os.environ.get("DEMO_API_TOKEN")
     if store is None:
         if run_migrations:
             migrate()
         store = ClinicalStore(make_engine())
     llm = llm if llm is not None else _llm()
     app = FastAPI(title="Clinical evidence platform API", version=API_VERSION)
-    app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-                       allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware,
+                       allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:8080").split(","),
+                       allow_methods=["GET", "POST"], allow_headers=["Content-Type", "Authorization"])
+
+    @app.middleware("http")
+    async def demo_guard(request, call_next):
+        # Optional shared demo token: a gate against accidental exposure, NOT user authentication.
+        if demo_token and request.url.path.startswith("/api") and request.url.path != "/api/health" \
+                and request.method != "OPTIONS" and request.headers.get("authorization") != f"Bearer {demo_token}":
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "demo token required"}, status_code=401)
+        response = await call_next(request)
+        response.headers["X-Clinical-Demo"] = DEMO_HEADER
+        return response
     app.state.store, app.state.llm = store, llm
 
     def _known(pid: str):
@@ -39,7 +59,7 @@ def create_app(store: ClinicalStore | None = None, llm=None, run_migrations: boo
     @app.get("/api/health")
     def health():
         return {"status": "ok", "api_version": API_VERSION, "database": store.engine.dialect.name,
-                "llm_configured": llm is not None}
+                "llm_configured": llm is not None, "mode": DEMO_HEADER, "demo_token_required": bool(demo_token)}
 
     @app.get("/api/patients", response_model=list[PatientSummary])
     def patients():

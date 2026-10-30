@@ -42,6 +42,14 @@ def _days(a: str | None, b: str | None) -> int | None:
         return None
 
 
+# ICD-10 categories that denote one clinical concept for presence/absence checks ("Kein Diabetes mellitus" vs E11).
+_FAMILIES = {"E10": "diabetes", "E11": "diabetes", "E12": "diabetes", "E13": "diabetes", "E14": "diabetes"}
+
+
+def _family(code: str) -> str:
+    return _FAMILIES.get(code[:3], code)
+
+
 def detect_conflicts(facts: list[ClinicalFact]) -> list[Conflict]:
     out: list[Conflict] = []
     by_doc: dict[str, list[ClinicalFact]] = defaultdict(list)
@@ -119,13 +127,21 @@ def detect_conflicts(facts: list[ClinicalFact]) -> list[Conflict]:
     for f in facts:
         if f.fact_type == "diagnosis" and f.codings and not f.assertion.question and f.assertion.experiencer == "patient" \
                 and f.assertion.temporality == "current":
-            by_code[f.codings[0].code].append(f)
+            by_code[_family(f.codings[0].code)].append(f)
     for code, g in by_code.items():
         pos = [f for f in g if not f.assertion.negated and f.assertion.certainty == "affirmed"]
         neg = [f for f in g if f.assertion.negated]
         for p in pos:
             for n in neg:
                 d = _days(p.document_date, n.document_date)
+                if d is not None and d > 30 and (p.document_date or "") < (n.document_date or ""):
+                    ids = [p.fact_id, n.fact_id]  # affirmed earlier, explicitly denied later
+                    out.append(Conflict(conflict_id=_cid("negl", ids), kind="presence_conflict",
+                                        title=f"{p.codings[0].display}: present on {p.document_date}, documented absent "
+                                              f"on {n.document_date}",
+                                        explanation="A diagnosis documented earlier is explicitly negated in a later "
+                                                    "document. This may be resolution or a documentation error; check.",
+                                        severity="low", fact_ids=ids, concepts=[code]))
                 if d is not None and d <= 30 and p.evidence[0].passage_id != n.evidence[0].passage_id:
                     ids = [p.fact_id, n.fact_id]
                     out.append(Conflict(conflict_id=_cid("neg", ids), kind="presence_conflict",

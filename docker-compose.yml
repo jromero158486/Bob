@@ -18,6 +18,9 @@ services:
       DATABASE_URL: postgresql+psycopg://clinical:${POSTGRES_PASSWORD:-clinical}@db:5432/clinical
       LLM_PROVIDER: ${LLM_PROVIDER:-none}
       INGEST_FLAGS: ${INGEST_FLAGS:-}
+      CLINICAL_DEMO_ONLY: "1"
+      DEMO_API_TOKEN: ${DEMO_API_TOKEN:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
@@ -25,10 +28,10 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-}
     volumes: ["${IBM_DATA_DIR:-./private_data/empty}:/data:ro"]
     depends_on: { db: { condition: service_healthy } }
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]  # loopback only: no auth, synthetic data only
   frontend:
     build: { context: ./frontend }
     depends_on: [backend]
-    ports: ["8080:80"]
+    ports: ["127.0.0.1:8080:80"]
 volumes:
   pgdata: {}

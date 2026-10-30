@@ -390,10 +390,31 @@
       "type": "integer",
       "title": "Original End"
      },
+     "source_id": {
+      "type": "string",
+      "title": "Source Id",
+      "description": "Exact document version (source) the offsets refer to",
+      "default": ""
+     },
+     "source_sha256": {
+      "type": "string",
+      "title": "Source Sha256",
+      "description": "SHA-256 of the original source text of that version",
+      "default": ""
+     },
      "verified": {
       "type": "boolean",
       "title": "Verified",
+      "description": "Citation integrity only: offsets, passage, quote, checksum, patient, current version. Says nothing about whether the claim is correct.",
       "default": false
+     },
+     "integrity_errors": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Integrity Errors",
+      "default": []
      }
     },
     "type": "object",
@@ -523,6 +544,38 @@
       },
       "type": "array",
       "title": "Notes",
+      "default": []
+     },
+     "citation_integrity": {
+      "type": "string",
+      "enum": [
+       "valid",
+       "invalid",
+       "none"
+      ],
+      "title": "Citation Integrity",
+      "default": "none"
+     },
+     "support_basis": {
+      "type": "string",
+      "enum": [
+       "source_values_matched",
+       "verbatim_passage",
+       "derived_from_verified_inputs",
+       "documented_negative",
+       "absence_in_record",
+       "none"
+      ],
+      "title": "Support Basis",
+      "default": "none"
+     },
+     "support_checks": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Support Checks",
+      "description": "name:pass|fail for each semantic support check",
       "default": []
      }
     },
@@ -1461,6 +1514,16 @@
      "not_addressed": {
       "type": "integer",
       "title": "Not Addressed",
+      "default": 0
+     },
+     "citations_total": {
+      "type": "integer",
+      "title": "Citations Total",
+      "default": 0
+     },
+     "citations_valid": {
+      "type": "integer",
+      "title": "Citations Valid",
       "default": 0
      },
      "verification_incomplete": {
