@@ -158,3 +158,32 @@ verification or conflict detection, which must stay deterministic.
    `PLANNER=heuristic` as the demo default and the LLM planner opt-in.
 5. **Data:** synthetic data only. Use a direct Gemini API key (OpenRouter's zero-data-retention guardrail blocked
    Gemini earlier) and check the provider's data-retention terms first.
+
+## 7. Production verification (deployed, published Lovable app)
+
+Deployed: Bob **`b814c70`** on Exoscale (30 Oct 2026).
+- **Rollback:** VM snapshot of the previous deployment (`8acac85`) taken right before the deploy, plus the tagged
+  previous backend image.
+- **Browser audit:** a recorded run on https://screenshot-stitchery-studio.lovable.app covering the 5 official
+  situations, the 10 EN/DE tasks, the 12 edge cases and all pages.
+- **API audit:** the same tasks re-run against the hosted API.
+
+| Check | Result |
+|---|---|
+| IBM questions (strict re-grade in the browser, visible without expanding) | **12 correct, 3 partial, 0 failed.** 4.1, 4.2 and 5.1 are now correct. The three partials are qualifiers the earlier audit had accepted (see below). |
+| 1.3 LVEF | 60 % and June 2015 are visible. "Normal systolic function" is only in the cited source. |
+| 3.2 HbA1c | 6.4 % and June 2015 are visible. "No later value documented" is not stated explicitly. |
+| 3.3 weight | 78 → 67 → 66 kg and −12 kg are visible. The 67 kg value is dated 2016-04-05 (date of the letter); the visit itself was on 04.04.2016. |
+| Citations | one per situation opened the correct German original with the exact span highlighted. API audit: **0 bad links** in all 27 runs. |
+| EN/DE | all 10 tasks run. Essential facts and citation documents match in both languages. Headings follow the EN/DE switch; source quotes stay German. |
+| Edge cases | E2–E12 pass. E1 is partial: smoking is "not documented" and "Kein Perikarderguß" is quoted verbatim, but its badge says "Documented", not "Documented negative". |
+| Pages | Documents (highlight), medication comparison (candesartan 2015 `1-0-½` vs 2016 `1-0-1`), timeline, diagnoses, and a review decision that persisted |
+| Verify clinical statement | "The patient takes aspirin." → supported, Thrombo ASS evidence first. Normal tasks sent no verification requests. API: 10/12 edge statements correct. |
+| Errors | 48/48 clinical calls returned HTTP 200, all 28 task responses were `origin: live`, no runtime or CORS errors |
+| UI latency, 5 official situations | 1.32–2.16 s each, **slowest 2.16 s (S4), total 7.8 s** (target < 10 s per screen) |
+| Services | backend, models, Caddy and database up; 0 restarts, no out-of-memory events; health 200; API without token 401 |
+
+Still open:
+- Conflicts are shown as explanations with source buttons, not as passages side by side.
+- The three qualifiers above.
+- The badge for documented negatives in free-text quotes.
