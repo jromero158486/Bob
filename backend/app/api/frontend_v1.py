@@ -120,9 +120,12 @@ def _clean(d: dict) -> dict:
     return {k: v for k, v in d.items() if v is not None}
 
 
-def _fact_from_facts(f, syn: Synthesizer, docs: _Docs) -> dict:
+def _fact_from_facts(f, syn: Synthesizer, docs: _Docs, verifier) -> dict:
     v = "documented_negative" if f.assertion.negated else ("needs_review" if f.review_status == "needs_review" else "documented")
-    ev = [e for e in (docs.evidence(c, v, f.extractor.name) for c in syn.citations([f])) if e]
+    cits = syn.citations([f])
+    for c in cits:
+        c.verified = verifier.verify_citation(c)
+    ev = [e for e in (docs.evidence(c, v, f.extractor.name) for c in cits) if e]
     return _clean({"id": f.fact_id, "statement": f.label, "category": f.fact_type,
                    "eventDate": f.event_date.value if f.event_date else None, "documentDate": f.document_date,
                    "verification": v, "approval": "unreviewed", "evidence": ev})
@@ -170,6 +173,7 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
         known(pid)
         docs, syn = _Docs(store, pid), Synthesizer(store, pid)
         as_of = max(d.document_date for d in store.documents(pid) if d.document_date)
+        verifier = ClaimVerifier(store, pid, as_of, [])
         facts: dict[str, dict] = {}
         timeline = []
         for i, e in enumerate(build_timeline(store, pid, as_of, syn)):
@@ -179,7 +183,7 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
         for f in store.facts(pid, types=["diagnosis", "procedure"]):
             if f.assertion.question:
                 continue
-            facts[f.fact_id] = _fact_from_facts(f, syn, docs)
+            facts[f.fact_id] = _fact_from_facts(f, syn, docs, verifier)
             dx.append(_clean({"id": f.fact_id, "label": f.label + (" (verneint)" if f.assertion.negated else ""),
                               "code": f.codings[0].code if f.codings else None, "kind": f.fact_type,
                               "date": (f.event_date.value if f.event_date else f.document_date) or "", "factId": f.fact_id,
@@ -190,7 +194,7 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
             d = next((x for x in store.documents(pid) if x.document_id == f.document_id), None)
             episodes.setdefault(f.document_id, {"id": f.document_id, "label": d.title if d else f.document_id,
                                                 "date": f.document_date or ""})
-            facts[f.fact_id] = _fact_from_facts(f, syn, docs)
+            facts[f.fact_id] = _fact_from_facts(f, syn, docs, verifier)
             m = f.details
             sub = (m.ingredient or m.drug_text).strip()
             dose = " ".join(x for x in [f"{m.strength_value:g} {m.strength_unit}" if m.strength_value is not None else "",
