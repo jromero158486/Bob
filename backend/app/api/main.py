@@ -99,7 +99,7 @@ def create_app(store: ClinicalStore | None = None, llm=None, run_migrations: boo
     @app.post("/api/tasks", response_model=TaskResponse)
     def task(req: TaskRequest):
         try:
-            return run_task(store, req.patient_id, req.request, llm)
+            return run_task(store, req.patient_id, req.request, llm, req.retrieval_mode)
         except UnknownPatient:
             raise HTTPException(404, f"Unknown patient {req.patient_id}")
         except ValueError as exc:

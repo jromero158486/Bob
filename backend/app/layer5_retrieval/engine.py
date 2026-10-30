@@ -168,11 +168,17 @@ def _codes_ok(f: ClinicalFact, prefixes: list[str]) -> bool:
     return not prefixes or any(c.code.startswith(tuple(prefixes)) for c in f.codings)
 
 
+RETRIEVAL_MODES = ("auto", "lexical", "dense", "hybrid", "hybrid_rerank")
+
+
 class Executor:
     def __init__(self, store: ClinicalStore, patient_id: str, as_of: str, retrieval: str | None = None):
         self.store, self.pid, self.as_of = store, patient_id, as_of
-        # lexical | dense | hybrid | hybrid_rerank; what actually ran is recorded in retrieval_used.
-        self.retrieval = (retrieval or os.environ.get("RETRIEVAL_MODE", "lexical")).lower()
+        # auto (dense if BGE-M3 is available and indexed, else lexical) | lexical | dense | hybrid | hybrid_rerank.
+        # What actually ran is recorded in retrieval_used; every fallback is recorded in retrieval_warnings.
+        self.retrieval = (retrieval or os.environ.get("RETRIEVAL_MODE", "auto")).lower()
+        if self.retrieval not in RETRIEVAL_MODES:
+            raise ValueError(f"unknown retrieval mode {self.retrieval!r}; expected one of {RETRIEVAL_MODES}")
         self.retrieval_used: set[str] = set()
         self.retrieval_warnings: list[str] = []
         self.syn = Synthesizer(store, patient_id)
@@ -395,25 +401,35 @@ class Executor:
         d = self.syn.docs.get(p.source_id)
         return d is not None and (d.document_date or "") <= self.as_of
 
-    def _model_rankings(self, query: str, step: PlanStep, passages: dict, n: int = 50) -> dict[str, list[str]]:
-        """BGE-M3 dense, sparse and multi-vector rankings over this patient's current, eligible passages."""
-        from backend.app.layer5_retrieval.embeddings import colbert_from_bytes, shared_encoder
-        enc = shared_encoder()
-        rows = [r for r in self.store.embedding_rows(self.pid, enc.name)]
+    def _model_rankings(self, query: str, step: PlanStep, passages: dict, kinds: tuple[str, ...],
+                        n: int = 50) -> dict[str, list[str]]:
+        """BGE-M3 dense / sparse / multi-vector rankings over this patient's current, eligible passages.
+        Checks that embeddings are indexed before touching the model, so an unindexed store never loads weights."""
+        from backend.app.layer5_retrieval.embeddings import colbert_from_bytes, configured_model, shared_encoder
+        rows = self.store.embedding_rows(self.pid, configured_model())
         if not rows:
-            raise EmbeddingsUnavailable(f"no {enc.name} embeddings indexed for this patient")
+            raise EmbeddingsUnavailable(f"no {configured_model()} embeddings indexed for this patient")
+        try:
+            enc = shared_encoder()
+        except OSError as exc:  # weights missing from the local cache
+            raise EmbeddingsUnavailable(str(exc)) from exc
         found = self.store.passages(self.pid, [r.passage_id for r in rows])
         ok = {pid for pid, p in found.items() if self._eligible(p, step)}
         passages.update({pid: found[pid] for pid in ok})
         q = enc.encode([query])[0]
+        out: dict[str, list[str]] = {}
         dense, backend = self.store.dense_search(self.pid, enc.name, q.dense, limit=len(rows))
         self.retrieval_used.add(f"dense:{backend}")
+        out["dense"] = [pid for pid, _ in dense if pid in ok][:n]
         rows = [r for r in rows if r.passage_id in ok]
-        sparse = sorted(rows, key=lambda r: -enc.sparse_score(q.sparse, r.sparse))
-        colbert = sorted(rows, key=lambda r: -enc.colbert_score(q.colbert, colbert_from_bytes(r.colbert, r.colbert_tokens)))
-        return {"dense": [pid for pid, _ in dense if pid in ok][:n],
-                "sparse": [r.passage_id for r in sparse if enc.sparse_score(q.sparse, r.sparse) > 0][:n],
-                "colbert": [r.passage_id for r in colbert][:n]}
+        if "sparse" in kinds:
+            sc = {r.passage_id: enc.sparse_score(q.sparse, r.sparse) for r in rows}
+            out["sparse"] = [i for i in sorted(sc, key=lambda i: -sc[i]) if sc[i] > 0][:n]
+        if "colbert" in kinds:
+            sc = {r.passage_id: enc.colbert_score(q.colbert, colbert_from_bytes(r.colbert, r.colbert_tokens))
+                  for r in rows}
+            out["colbert"] = sorted(sc, key=lambda i: -sc[i])[:n]
+        return out
 
     def search_passages(self, step: PlanStep, k: int = 6) -> tuple[list[str], dict, str]:
         """Ranked passage ids for a search step. Lexical ranking is per-term reciprocal rank fusion
@@ -432,11 +448,15 @@ class Executor:
         used = "lexical"
         query = f"{step.title}: {', '.join(terms)}"
         if self.retrieval != "lexical":
+            want = "dense" if self.retrieval == "auto" else self.retrieval
+            kinds = ("dense",) if want == "dense" else ("dense", "sparse", "colbert")
             try:
-                rankings.update(self._model_rankings(query, step, passages))
-                used = self.retrieval
+                rankings.update(self._model_rankings(query, step, passages, kinds))
+                used = want
             except EmbeddingsUnavailable as exc:
-                self.retrieval_warnings.append(f"{self.retrieval} retrieval unavailable, lexical used: {exc}")
+                msg = f"{want} retrieval unavailable ({self.retrieval} requested), lexical fallback used: {exc}"
+                if msg not in self.retrieval_warnings:
+                    self.retrieval_warnings.append(msg)
         if used == "dense":
             fused = rankings["dense"]
         else:

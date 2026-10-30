@@ -9,4 +9,8 @@ if [ -d /data/documents ]; then
   exit 1
 fi
 for d in /data/patient-*; do [ -d "$d" ] && ingest "$d"; done
+if [ -n "$EMBEDDING_SERVICE_URL" ] && [ "${EMBEDDINGS:-bge-m3}" != "none" ]; then
+  python -m backend.app.tools.index_embeddings \
+    || echo "WARNING: BGE-M3 indexing failed; tasks will use lexical retrieval and report the fallback" >&2
+fi
 exec uvicorn backend.app.api.main:app --host 0.0.0.0 --port 8000

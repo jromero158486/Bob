@@ -1,0 +1,10 @@
+# BGE-M3 + BGE reranker model service (CPU). Weights are NOT baked in: they live in the HF_HOME volume.
+FROM public.ecr.aws/docker/library/python:3.11-slim
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HF_HOME=/hf
+COPY pyproject.toml README.md ./
+COPY backend ./backend
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+ && pip install --no-cache-dir -e '.[api,retrieval]'
+EXPOSE 8001
+CMD ["uvicorn", "backend.app.layer5_retrieval.model_service:app", "--host", "0.0.0.0", "--port", "8001"]

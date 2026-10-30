@@ -23,7 +23,8 @@ def patient_conflicts(store: ClinicalStore, patient_id: str, as_of: str | None =
     return detect_conflicts(store.facts(patient_id, as_of=as_of))
 
 
-def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None) -> TaskResponse:
+def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None,
+             retrieval: str | None = None) -> TaskResponse:
     t0 = time.perf_counter()
     docs = store.documents(patient_id)
     if not docs:
@@ -32,7 +33,7 @@ def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None) -> T
     t1 = time.perf_counter()
     latest = max(d.document_date for d in docs if d.document_date)
     as_of = plan.as_of or latest
-    ex = Executor(store, patient_id, as_of)
+    ex = Executor(store, patient_id, as_of, retrieval=retrieval)
     sections, missing = ex.run(plan)
     t2 = time.perf_counter()
     conflicts = detect_conflicts(ex.all_facts)
@@ -63,7 +64,9 @@ def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None) -> T
         run = s.scalars(select(ExtractionRunRow).order_by(ExtractionRunRow.started_at.desc())).first()
         components = run.payload.get("components", []) if run else []
     prov = Provenance(planner=plan.planner.name, planner_model=plan.planner.model, llm_configured=llm is not None,
-                      extraction_components=components, database=store.engine.dialect.name)
+                      extraction_components=components, database=store.engine.dialect.name,
+                      retrieval_mode=ex.retrieval, retrieval_used=sorted(ex.retrieval_used),
+                      retrieval_warnings=ex.retrieval_warnings)
     return TaskResponse(request_id="req:" + uuid.uuid4().hex[:12], patient_id=patient_id, request=request, as_of=as_of,
                         plan=plan, sections=sections, missing=missing, conflicts=conf_out, timeline=timeline,
                         verification=summarize(claims), provenance=prov,

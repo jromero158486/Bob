@@ -13,9 +13,28 @@ services:
       test: ["CMD-SHELL", "pg_isready -U clinical"]
       interval: 3s
       retries: 20
+  models:
+    # BGE-M3 + reranker kept loaded; weights in a persistent volume (or HF_CACHE_DIR=~/.cache/huggingface to reuse
+    # a host cache). Internal network only. First start downloads ~4.5 GB unless the cache is already populated.
+    build: { context: ., dockerfile: backend/Dockerfile.models }
+    environment:
+      HF_HOME: /hf
+      EMBED_THREADS: ${EMBED_THREADS:-6}
+      RERANKER: ${RERANKER:-bge-reranker-v2-m3}
+      HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-0}
+    volumes: ["${HF_CACHE_DIR:-hf-cache}:/hf"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=5)"]
+      interval: 10s
+      retries: 6
+      start_period: 900s
   backend:
     build: { context: ., dockerfile: backend/Dockerfile }
     environment:
+      RETRIEVAL_MODE: ${RETRIEVAL_MODE:-auto}  # auto = BGE-M3 dense when available, lexical fallback (reported)
+      EMBEDDING_SERVICE_URL: ${EMBEDDING_SERVICE_URL:-http://models:8001}
+      EMBEDDING_WAIT: ${EMBEDDING_WAIT:-900}
+      EMBEDDINGS: ${EMBEDDINGS:-bge-m3}
       DATABASE_URL: postgresql+psycopg://clinical:${POSTGRES_PASSWORD:-clinical}@db:5432/clinical
       LLM_PROVIDER: ${LLM_PROVIDER:-none}
       INGEST_FLAGS: ${INGEST_FLAGS:-}
@@ -28,7 +47,8 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-}
     volumes: ["${IBM_DATA_DIR:-./private_data/empty}:/data:ro"]
-    depends_on: { db: { condition: service_healthy } }
+    # models only needs to have started: indexing waits for it, and tasks fall back to lexical if it is down
+    depends_on: { db: { condition: service_healthy }, models: { condition: service_started } }
     ports: ["127.0.0.1:8000:8000"]  # loopback only: no auth, synthetic data only
   frontend:
     build: { context: ./frontend }
@@ -36,3 +56,4 @@ services:
     ports: ["127.0.0.1:8080:80"]
 volumes:
   pgdata: {}
+  hf-cache: {}

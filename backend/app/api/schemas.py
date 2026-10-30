@@ -9,6 +9,7 @@ from backend.app.layer4_planner.contracts import TaskPlan
 
 API_VERSION = "1.0"
 ClaimStatus = Literal["supported", "contradicted", "not_addressed", "verification_incomplete"]
+RetrievalMode = Literal["auto", "lexical", "dense", "hybrid", "hybrid_rerank"]
 ClaimKind = Literal["fact", "computed", "documented_negative", "change", "passage", "not_documented"]
 
 
@@ -99,11 +100,15 @@ class Provenance(BaseModel):
     extraction_components: list[dict] = []
     database: str
     api_version: str = API_VERSION
+    retrieval_mode: str | None = None
+    retrieval_used: list[str] = []
+    retrieval_warnings: list[str] = []
 
 
 class TaskRequest(BaseModel):
     patient_id: str
     request: str = Field(min_length=3, max_length=2000)
+    retrieval_mode: RetrievalMode | None = None
 
 
 class TaskResponse(BaseModel):

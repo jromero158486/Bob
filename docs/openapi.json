@@ -1048,6 +1048,33 @@
       "type": "string",
       "title": "Api Version",
       "default": "1.0"
+     },
+     "retrieval_mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retrieval Mode"
+     },
+     "retrieval_used": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Retrieval Used",
+      "default": []
+     },
+     "retrieval_warnings": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Retrieval Warnings",
+      "default": []
      }
     },
     "type": "object",
@@ -1282,6 +1309,24 @@
       "maxLength": 2000,
       "minLength": 3,
       "title": "Request"
+     },
+     "retrieval_mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "auto",
+         "lexical",
+         "dense",
+         "hybrid",
+         "hybrid_rerank"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retrieval Mode"
      }
     },
     "type": "object",

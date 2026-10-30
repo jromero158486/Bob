@@ -116,6 +116,9 @@ export type Provenance = {
   extraction_components?: Record<string, unknown>[];
   database: string;
   api_version?: string;
+  retrieval_mode?: string | null;
+  retrieval_used?: string[];
+  retrieval_warnings?: string[];
 };
 
 export type ReviewUpdate = {
@@ -158,6 +161,7 @@ export type TaskPlan = {
 export type TaskRequest = {
   patient_id: string;
   request: string;
+  retrieval_mode?: "auto" | "lexical" | "dense" | "hybrid" | "hybrid_rerank" | null;
 };
 
 export type TaskResponse = {
