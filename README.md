@@ -1,103 +1,176 @@
 # Lumen Clinical
 
-**The right patient information, for the right clinician, with evidence you can check.**
+**The right patient information for the right clinician, with evidence you can check.**
 
-**Healthcare Hackathon Vienna 2026 · Track 1: Clinical Documentation**  
-**[Open the live demo](https://screenshot-stitchery-studio.lovable.app)** (live FastAPI backend on Exoscale, Vienna) · [IBM judging results](docs/JUDGING_RESULTS.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md)
+Healthcare Hackathon Vienna 2026 · **Track 1: Clinical Documentation** (IBM synthetic patient) · Repository: **LEVRIQ**  
+**[Live demo](https://screenshot-stitchery-studio.lovable.app)** · [Track 1 metrics](docs/TRACK1_METRICS.md) ·
+[Blind evaluation](docs/ADVERSARIAL_EVAL.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md) ·
+Frontend repo: [screenshot-match](https://github.com/jromero158486/screenshot-match)
 
-## The problem
+## Problem and solution
 
-A patient's story is scattered across clinical letters, medication lists and reports. Finding what matters for a specific clinical task takes time. Records may disagree, and missing information can be mistaken for a documented negative finding.
+A patient's history is spread across German letters, reports and medication lists. Finding what matters for one
+clinical task takes time. Records disagree, and "not documented" is easily mistaken for "documented absent".
 
-## Our solution
+Lumen Clinical takes a **free-text role and task** (English or German) and builds a task-specific screen from the
+patient's documents. Every fact links to the **exact passage in the original German document**. Missing
+information is listed separately from documented negatives, conflicting passages are flagged, and a clinician
+records the final review decision. Lumen supports clinical review; it does not replace clinical judgement.
 
-**Lumen Clinical** turns German medical documents into a task-focused, evidence-linked clinical workspace. A clinician can describe **any role and question** in German or English. Lumen retrieves relevant information, brings together the patient's history, flags conflicting or missing details, and links findings to the **exact passages in the original documents**.
+## What is implemented (and deployed)
 
-**It supports clinical review; it does not replace clinical judgment.**
+- **Task-specific answers** for any role and task, in English or German (headings and notices follow the request
+  language; source quotes stay in the original German).
+- **Source citations** at character-offset level, checked automatically on every response.
+- **Longitudinal history:** medications compared across stays, a timeline, and value series (weight, blood pressure).
+- **"Not documented" vs. "documented negative"**, and **conflict detection** (e.g. a BMI that does not match the
+  height and weight, two admission dates, left vs. right).
+- **Out-of-scope handling:** questions unrelated to the record get an explanation instead of patient data.
+- **Human-in-the-loop review** (see below) and an optional **"Verify clinical statement"** check (multilingual NLI).
 
-## Try it in the demo
+**Not implemented:** FHIR export, a temporal knowledge graph, an autonomous agent, user authentication. An LLM
+planner exists in the code but is **off** in production; no LLM is used at runtime.
 
-To reproduce the five official IBM scenarios, follow [docs/DEMO_SCRIPT_IBM.md](docs/DEMO_SCRIPT_IBM.md). A two-minute walkthrough script is in [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md).
-
-
-1. **Preoperative review (German):** Role: `Anästhesistin` · Task: `Präoperative Abklärung: Allergien, Antikoagulation, Raucherstatus und relevante Herzbefunde?`
-2. **Cancer treatment (English):** `What is the planned breast cancer treatment and when, and what are the receptor status and Ki-67?`
-3. **Check the evidence:** Click any citation to see the original German text and highlighted source span; explore medication changes and record conflicts.
-4. **Optional claim checker:** Open **Verify clinical statement** to check whether a statement is supported, contradicted or not addressed by the record.
-
-## What it can do
-
-- **Task-adaptive summaries:** Different clinical roles and questions surface different information.
-- **Source-linked answers:** Click citations to inspect the original record, not just an AI-generated summary.
-- **Longitudinal overview:** Explore diagnoses, events and medication lists across documents.
-- **Discrepancy detection:** See conflicting values, dates and medication instructions.
-- **Missing-information alerts:** Distinguish *not documented* from *documented absent*.
-- **Human-in-the-loop review:** Review flagged findings; optionally verify a statement with multilingual NLI.
-
-## How it works — seven layers
+## Architecture: seven layers
 
 ```mermaid
 flowchart TD
-    D["IBM synthetic patient documents<br/>(German clinical records)"] --> L1["L1 · Document ingestion & provenance<br/>Sections · exact source offsets"]
-    L1 --> L2["L2 · Clinical information extraction<br/>Diagnoses · medications · negation"]
-    L2 --> L3["L3 · Longitudinal knowledge store<br/>PostgreSQL · pgvector · dates"]
-
-    U["Clinician: role + open-ended task<br/>(German or English)"] --> L4["L4 · Task interpretation<br/>Rule-based planner · optional LLM"]
-    L4 --> L5["L5 · Relevant evidence retrieval<br/>Structured facts · BGE-M3 search"]
-    L3 -->|Patient facts and source passages| L5
-    L5 --> L6["L6 · Evidence and consistency checks<br/>Citations · conflicts · optional NLI"]
-    L6 --> L7["L7 · Adaptive clinical interface<br/>Summaries · timelines · evidence inspector"]
-    L7 --> O["Clinician reviews the result<br/>and opens original source evidence"]
+    D["IBM synthetic documents (German)"] --> L1["L1 Ingestion & provenance<br/>sections, exact offsets"]
+    L1 --> L2["L2 Clinical extraction<br/>rules + medSpaCy, negation, ATC/ICD-10"]
+    L2 --> L3["L3 Clinical store<br/>PostgreSQL 16 + pgvector"]
+    U["Clinician: role + task (EN/DE)"] --> L4["L4 Task planner<br/>rule-based"]
+    L4 --> L5["L5 Retrieval<br/>structured facts + BGE-M3 dense"]
+    L3 --> L5
+    L5 --> L6["L6 Verification<br/>citation integrity, conflicts, missing info; optional NLI"]
+    L6 --> L7["L7 UI (Lovable/React) via REST /api/v1"]
+    L7 --> R["Clinician review decision<br/>(stored separately)"]
 ```
 
-**Technology actually running in the demo:**
-- **Backend:** Python 3.11 / FastAPI.
-- **Extraction:** rule-based German extraction with medSpaCy and German NegEx/ConText rules; local ATC/ICD-10/LOINC lexicons.
-- **Storage:** PostgreSQL 16 + pgvector.
-- **Retrieval:** BGE-M3 (`BAAI/bge-m3`) dense retrieval, plus structured fact queries.
-- **Planning:** a rule-based task planner. An LLM planner exists but is off in the demo.
-- **Verification:** deterministic citation-integrity checks in every response; optional multilingual NLI (`mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`) on request.
-- **Frontend:** React / TypeScript built with Lovable.
-- **Hosting:** Docker Compose on one Exoscale VM, with Caddy HTTPS and a demo token.
+| Layer | Code | What it does |
+|---|---|---|
+| L1 | `backend/app/layer1_ingestion` | Reads IBM JSON documents, splits them into sections and keeps exact character offsets for every passage. |
+| L2 | `backend/app/layer2_extraction` | Extracts diagnoses, medications (dose, schedule), measurements, procedures and allergies with German rules, medSpaCy ConText/NegEx and local ATC/ICD-10/LOINC lexicons. |
+| L3 | `backend/app/layer3_store` | Stores facts, evidence spans, embeddings and review decisions in PostgreSQL + pgvector (Alembic migrations). |
+| L4 | `backend/app/layer4_planner` | Turns role + task into a plan of clinical concepts (EN/DE vocabulary, abbreviations), the response language and a scope check. |
+| L5 | `backend/app/layer5_retrieval` | Queries structured facts and BGE-M3 dense passage search (lexical fallback, reported in the response). |
+| L6 | `backend/app/layer6_verification` | Checks every citation against the source text, detects conflicts and missing items; optional NLI on request (`POST /api/v1/verify-statement`). |
+| L7 | [screenshot-match](https://github.com/jromero158486/screenshot-match) | React/TypeScript app (built with Lovable). It renders the backend's blocks and opens the source document with the highlighted span. |
 
-Deferred and **not** in the demo: FHIR export, temporal knowledge graph, autonomous (ReAct) agent.
+**How the components talk:** the browser calls the FastAPI REST API (`/api/v1`, OpenAPI in `docs/openapi.json`)
+with a bearer demo token. The backend reads and writes PostgreSQL. It calls the internal model service over HTTP for
+BGE-M3 embeddings and NLI. In production, Caddy terminates HTTPS and is the only public entry point; the database and
+model service are private.
 
-## IBM Track 1 audit (official 5 situations, 15 questions)
+**Production stack:**
+- Python 3.11, FastAPI, SQLAlchemy/Alembic.
+- PostgreSQL 16 + pgvector.
+- spaCy/medSpaCy.
+- Models: `BAAI/bge-m3` (dense retrieval) and `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` (optional
+  NLI), both served on CPU. Reranker off (`RERANKER=none`).
+- Frontend: React + TypeScript (Lovable).
+- Hosting: Docker Compose on one Exoscale VM (Vienna, 4 vCPU / 8 GB) behind Caddy.
 
-Deployed system: Bob **`b814c70`** on Exoscale with the published Lovable app, audited in the browser on 30 Oct 2026. Details: [docs/RELIABILITY_RESULTS.md](docs/RELIABILITY_RESULTS.md) (current) and [docs/JUDGING_RESULTS.md](docs/JUDGING_RESULTS.md) (first audit, `8acac85`).
+## Run it locally (Docker Compose)
 
-| Metric | Result (`b814c70`, strict grading: answer visible without expanding anything) |
-|---|---|
-| Correct answers | **12/15 correct, 3 partial, 0 failed.** The three partials are missing qualifiers: "normal LV function" appears only in the source; "no later HbA1c" is not stated; the 67 kg weight shows the letter date, not the visit date. The first audit (12/15 under a more lenient reading) had 4.1, 4.2 and 5.1 partial or failed; all three are now correct. |
-| Traceability | **100%**: every displayed fact is linked; 0 bad evidence links in all 27 audited tasks |
-| Invented facts | **0 found** in the manual review of the answer facts |
-| Contradictions | 8 flagged: 7 real, 1 false alarm (net +6); changes over time are not flagged |
-| Slowest screen | **2.2 s** in the browser (target < 10 s); all five together 7.8 s |
-| New tasks | 10 English/German tasks: same essential facts and citations in both languages. 12 edge cases: 11 pass, 1 partial |
+Requirements: Docker with Compose v2, about 10 GB of free disk space (model weights about 4.5 GB), and the IBM
+challenge ZIP.
 
-## Early evaluation
+1. **Provide the IBM data separately.** It is not in this repository and must never be committed. Unzip the
+   challenge ZIP anywhere outside the repo. `IBM_DATA_DIR` must point to its `data` folder (the folder containing
+   `patient-0000-0001/`). It is mounted read-only.
+2. **Start the stack:**
 
-On **one synthetic IBM patient (8 documents)**, our internal evaluation found:
+```bash
+git clone https://github.com/jromero158486/LEVRIQ.git && cd LEVRIQ
+IBM_DATA_DIR=/path/to/AIM-hack-track1-shipit-main/data RERANKER=none docker compose up --build -d
+curl -s localhost:8000/api/health        # {"status":"ok", ...}; the first start downloads models (several minutes)
+curl -s localhost:8000/api/v1/patients   # patient-0000-0001, 8 documents
+```
 
-- **Passage fact recall@10:** BGE-M3 dense retrieval **57%** versus **9%** for keyword-only retrieval (28 bilingual queries).
-- **Claim checking:** **0 false-supported claims** in a small 34-claim held-out evaluation with deterministic checks plus multilingual NLI; contradiction recall **82%**, support recall 50%.
-- **English ↔ German:** 5 new task pairs and 6 statement pairs, checked by hand: [docs/MULTILINGUAL_RESULTS.md](docs/MULTILINGUAL_RESULTS.md).
-- **Reliability (deployed):** 12 edge cases (out-of-scope questions, requests to invent, missing vs. negative findings, synonyms), the `locale` parameter, and the assessment of an optional Gemini planner (not integrated): [docs/RELIABILITY_RESULTS.md](docs/RELIABILITY_RESULTS.md).
+3. **Open the UI.** The production UI is in [screenshot-match](https://github.com/jromero158486/screenshot-match):
 
-These are **preliminary, small-sample engineering results**, not evidence of clinical safety or generalization. See the [scientific report](docs/SCIENTIFIC_REPORT.md) for methods, baselines and limitations.
+```bash
+git clone https://github.com/jromero158486/screenshot-match.git && cd screenshot-match
+printf 'VITE_CLINICAL_API_MODE=http\nVITE_CLINICAL_API_BASE_URL=http://localhost:8000/api/v1\n' > .env.local
+npm install && npx vite dev --port 5173   # open http://localhost:5173
+```
 
-## Scope and limitations
+   Start the backend with `CORS_ORIGINS=http://localhost:5173`. This repo also contains a minimal fallback UI on
+   http://localhost:8080.
 
-This is a **research prototype using synthetic hackathon data**, not a medical device. A *supported* claim means that it matches the cited record, **not that it has been clinically verified**. Advanced NLI verification is optional; the main response prioritizes speed and strict source integrity. The demo does not implement hospital-grade authentication or patient authorization; the demo token is visible in the public web app and only keeps out casual traffic.
+| Variable | Default | Purpose |
+|---|---|---|
+| `IBM_DATA_DIR` | empty folder | Path to the IBM `data` folder (required to load the patient) |
+| `HF_CACHE_DIR` | Docker volume | Reuse a local Hugging Face cache for the model weights |
+| `RERANKER` | `bge-reranker-v2-m3` | Use `none` to match production (the reranker is slow on CPU) |
+| `EMBED_THREADS` | `6` | CPU threads for embeddings |
+| `RETRIEVAL_MODE` | `auto` | BGE-M3 dense when available, otherwise lexical (reported) |
+| `PLANNER` / `LLM_PROVIDER` | `heuristic` / `none` | Rule-based planner; the optional LLM planner is off |
+| `DEMO_API_TOKEN` | empty | If set, API calls need `Authorization: Bearer <token>` (frontend: `VITE_CLINICAL_API_TOKEN`) |
+| `CORS_ORIGINS` | `http://localhost:8080` | Allowed browser origins |
+| `POSTGRES_PASSWORD` | `clinical` | Database password (local only; change it for any hosted use) |
 
-**Known gaps (deployed version):**
-- Three answers lack a qualifier, listed in the audit table above.
-- Conflicts show explanations with source buttons rather than side-by-side passages.
-- Quoted negatives (e.g. "Kein Perikarderguß") are labelled "Documented", not "Documented negative".
-- German answers keep English fact lines; headings, notices and all source quotes follow the requested language.
-- Some screens include extra, older facts; time windows such as "from the June 2015 stay" are not parsed.
-- Claim verification does not match English dosing wording ("three times daily") or the English contrast-allergy phrasing; these come back as "not documented", never as a false confirmation.
-- Out-of-scope detection uses word lists.
-- Everything was evaluated on **one synthetic patient**. The 15 questions and the edge-case tasks informed the rules, so they are regression tests, not held-out validation.
+Tests (no IBM data needed): `python -m venv .venv && .venv/bin/pip install -e ".[api,clinical,dev]" && .venv/bin/pytest -q`
+(101 passed, 2 skipped). Hosted setup: [deploy/exoscale/README.md](deploy/exoscale/README.md). Windows:
+[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md). Troubleshooting: [docs/DEMO_RUNBOOK.md](docs/DEMO_RUNBOOK.md).
 
-**Project resources:** [IBM judging results](docs/JUDGING_RESULTS.md) · [IBM demo script](docs/DEMO_SCRIPT_IBM.md) · [Video script](docs/DEMO_VIDEO_SCRIPT.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md) · [Demo runbook](docs/DEMO_RUNBOOK.md) · [Windows backup setup](docs/WINDOWS_SETUP.md) · [Security limitations](docs/SECURITY_AND_AUTH.md)
+## Reproduce the five official IBM scenarios
+
+- **In the app:** for each situation in `cases/situations.md`, enter the role (Anaesthetist, Surgeon, General
+  practitioner, Emergency physician, General practitioner) and paste the situation's title and description. Check
+  the three questions without expanding anything. Step by step: [docs/DEMO_SCRIPT_IBM.md](docs/DEMO_SCRIPT_IBM.md).
+- **Scripted:** `evaluation/judging/hosted_ibm_audit.py` sends the same requests to the live or local API. It saves
+  the raw screens and latency and checks every citation. Command: [docs/TRACK1_METRICS.md](docs/TRACK1_METRICS.md#reproduce).
+
+## Track 1 metrics (official definitions, production `b814c70`)
+
+| Metric | Result | Target |
+|---|---|---|
+| Correct answers | **12 / 15 correct, 3 partial, 0 failed** (strict: visible without clicking) | 15 / 15 |
+| Traceability | **100%** (463 facts, 755 links, 0 broken) | 100% |
+| Invented facts | **1**: a false "atrial fibrillation" diagnosis extracted from a question in a Holter request (on 4 of 5 screens) | 0 |
+| Contradictions | **+6** (7 real, 1 false alarm) | ≥ 5 |
+| Load time | **2.16 s** slowest (browser) | < 10 s |
+
+**On 20 new questions** written after the freeze ([blind evaluation](docs/ADVERSARIAL_EVAL.md)):
+5 correct, 11 partial, 4 incorrect, 0 broken citations. Definitions, method, baselines, the retrieval/verification
+experiments and the production audit: [docs/TRACK1_METRICS.md](docs/TRACK1_METRICS.md).
+
+## Human-in-the-loop review
+
+1. Layer 6 flags potential issues, such as conflicting values or dates; each becomes a review item.
+2. In **Review**, the clinician opens each source passage (the original German text, highlighted).
+3. They record a decision (approve, reject, escalate, or propose a correction) with a comment.
+4. Decisions are stored in PostgreSQL with their history. The UI shows "Human reviewed · approved" after a refresh.
+5. **Original documents are never changed.** A proposed correction is stored next to the source, not in it.
+
+Reviewer identity is a fixed demo user (no authentication). In the deployed version, escalations and corrections
+are saved but show as unreviewed after a refresh, and the sidebar counts reviewed items too. A tested fix is in
+[LEVRIQ #4](https://github.com/jromero158486/LEVRIQ/pull/4) and
+[screenshot-match #3](https://github.com/jromero158486/screenshot-match/pull/3); it is not deployed.
+
+## Limitations, privacy and data use
+
+- **Synthetic data only.** This is a research prototype and not a medical device. It is evaluated on **one**
+  synthetic patient; the 15 official questions shaped the rules, so they are a regression benchmark. No clinical
+  validation, and no claim of generalisation beyond the tested data.
+- **Known errors:**
+  - Question lines in reports can be extracted as findings (the false atrial-fibrillation diagnosis).
+  - False premises in questions are not corrected explicitly.
+  - Some absent items named in a question are not reported as "not documented".
+  - Scope detection uses word lists, so it can refuse answerable abbreviation-only questions and miss misleading
+    requests.
+  - German screens keep English fact lines.
+  - Conflicts are shown with links, not side by side.
+- **Privacy and security:**
+  - No user authentication or patient-level authorisation (the app refuses to start unless `CLINICAL_DEMO_ONLY=1`).
+  - The demo token only keeps out casual traffic.
+  - Voice input is mock-only.
+  - The IBM `data` folder, `expected.json`, raw evaluation outputs (`artifacts/`), `.env` files and keys are
+    git-ignored and not in this repository.
+  - See [docs/SECURITY_AND_AUTH.md](docs/SECURITY_AND_AUTH.md).
+
+**Documentation:** [Track 1 metrics](docs/TRACK1_METRICS.md) · [Blind evaluation](docs/ADVERSARIAL_EVAL.md) ·
+[Production audit](docs/RELIABILITY_RESULTS.md) · [First audit](docs/JUDGING_RESULTS.md) ·
+[EN/DE results](docs/MULTILINGUAL_RESULTS.md) · [Scientific report](docs/SCIENTIFIC_REPORT.md) ·
+[IBM demo script](docs/DEMO_SCRIPT_IBM.md) · [Video script](docs/DEMO_VIDEO_SCRIPT.md)

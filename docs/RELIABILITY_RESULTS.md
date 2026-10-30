@@ -1,5 +1,8 @@
 # Reliability, EN/DE generalization and edge cases
 
+> **Correction (blind evaluation, see [ADVERSARIAL_EVAL.md](ADVERSARIAL_EVAL.md)):** the screens contain one invented diagnosis that this audit missed: "Atrial fibrillation — VHF", extracted from the question line of a Holter request ("Arrhythmien? VHF?"); the Holter showed sinus rhythm. It appears on 4 of the 5 official screens. The invented-facts result is therefore **1** (not 0). Current metrics: [TRACK1_METRICS.md](TRACK1_METRICS.md).
+
+
 **Branch:** `devin/1793358593-reliability-edge-cases`, stacked on the multilingual PR.
 **Not deployed.** All results come from a local Docker stack (same images, models and IBM data as production).
 Production still runs `8acac85`.
