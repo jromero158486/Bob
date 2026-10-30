@@ -23,6 +23,15 @@ documents, in the browser on the published app.
 | Contradictions | Real contradictions shown minus false alarms; each counts once; all passages linked | hand review of the "Potential conflicts" block | **8 flagged: 7 real, 1 false alarm (140/90 vs 145/90 mmHg, a small measurement difference) → +6** | ≥ 5 |
 | Load time | Slowest of the 5, from submitting to the complete screen | browser stopwatch on the published app | **2.16 s** (S4); all five 1.32–2.16 s | < 10 s |
 
+**Methodology check against the Track 1 README:**
+- **Input:** title + description of each situation, as required ("Enter a situation's title and description into your app").
+- **Correct answers:** graded only on what is visible without clicking (scrolling allowed). Each answer must link to one of its source documents; "not documented" answers need no link.
+- **Traceability:** the automatic check covers every fact in the response, including blocks that start collapsed, so it is a superset of "facts on screen". It confirms that each link shows the quoted passage; it cannot judge meaning. Example: the invented AF fact links correctly to the literal "VHF?".
+- **Invented facts:** counted once per distinct fact across the 5 screens.
+- **Contradictions:** each counted once. Every flagged conflict links all its passages. Small measurement differences count as false alarms, per the README. Changes over time and differences from the JSON files are not flagged.
+- **Load time:** the slowest of the 5, from submitting to the complete screen, measured in the browser on the published app.
+- **Out of scope:** the README notes that the jury will also test new English situations. Our blind evaluation (section B) is our own attempt at this and is reported separately.
+
 **The three partials:**
 - 1.3: "normal systolic function" appears only in the cited source, not on screen.
 - 3.2: "no later HbA1c documented" is not stated.
