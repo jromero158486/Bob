@@ -1,0 +1,40 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; color: #1d2433; background: #f5f7fa; }
+.app { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.app.with-doc { max-width: none; margin-right: 46vw; }
+header { display: flex; align-items: baseline; gap: 16px; } h1 { font-size: 22px; margin: 4px 0; }
+.disclaimer { color: #6b7280; font-size: 12px; }
+.ask { display: grid; grid-template-columns: 1fr; gap: 8px; background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #e3e7ee; }
+.ask textarea, .ask select { font: inherit; padding: 8px; border: 1px solid #cfd6e0; border-radius: 6px; }
+.ask > button { background: #1f5eff; color: #fff; border: 0; padding: 10px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; } .examples button { font-size: 12px; background: #eef2f8; border: 1px solid #d7deea; border-radius: 12px; padding: 3px 9px; cursor: pointer; }
+.meta { font-size: 13px; color: #4b5563; margin: 12px 0; }
+.missing { background: #fff7e6; border: 1px solid #f5c26b; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; }
+.conflicts { background: #fff1f1; border: 1px solid #f3b4b4; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; }
+.conflicts h3 { margin: 2px 0 6px; font-size: 15px; } .conflict { padding: 6px 0; border-top: 1px dashed #f3b4b4; } .conflict-other { opacity: .85; }
+.tabs { display: flex; gap: 4px; margin: 8px 0; } .tabs button { border: 1px solid #cfd6e0; background: #fff; padding: 5px 12px; border-radius: 6px; cursor: pointer; text-transform: capitalize; }
+.tabs .active { background: #1d2433; color: #fff; }
+.section { background: #fff; border: 1px solid #e3e7ee; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+.section h2 { font-size: 16px; margin: 4px 0 6px; } .section ul { list-style: none; padding: 0; margin: 0; }
+.claim { padding: 6px 0; border-top: 1px solid #f0f2f5; } .claim-main { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.claim-text { font-weight: 500; } .claim-notes { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.claim-cites { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
+.cite { font-size: 11px; background: #eaf1ff; color: #1f4fd1; border: 1px solid #c6d6fb; border-radius: 10px; padding: 1px 8px; cursor: pointer; }
+.cite-bad { background: #ffe9e9; color: #b42318; border-color: #f3b4b4; }
+.badge { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #e5e7eb; }
+.badge-supported { background: #dcfce7; color: #166534; } .badge-contradicted { background: #fee2e2; color: #991b1b; }
+.badge-verification_incomplete { background: #fef3c7; color: #92400e; } .badge-not_addressed { background: #fee2e2; color: #991b1b; }
+.badge-info { background: #e0e7ff; color: #3730a3; } .badge-neg { background: #f1f5f9; color: #334155; } .badge-missing { background: #fff7e6; color: #9a5b00; }
+.sev-high { background: #fecaca; } .sev-medium { background: #fde68a; } .sev-low { background: #e5e7eb; }
+.flag { font-size: 11px; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 4px; }
+.review { margin-left: auto; display: flex; gap: 2px; font-size: 11px; color: #6b7280; } .review button { font-size: 11px; border: 1px solid #d1d5db; background: #fff; border-radius: 4px; cursor: pointer; }
+.timeline { background: #fff; border: 1px solid #e3e7ee; border-radius: 8px; padding: 8px 8px 8px 28px; } .timeline li { margin: 4px 0; }
+.tdate { font-family: monospace; } .tkind { font-size: 11px; color: #6b7280; }
+.plan { background: #0f172a; color: #e2e8f0; padding: 10px; border-radius: 8px; overflow: auto; font-size: 12px; }
+.docpanel { position: fixed; top: 0; right: 0; width: 45vw; height: 100vh; background: #fff; border-left: 1px solid #cfd6e0; display: flex; flex-direction: column; }
+.docpanel-head { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #e3e7ee; }
+.quote { padding: 6px 10px; background: #fffbe6; font-size: 13px; }
+.doctext { overflow: auto; padding: 10px; font-family: Georgia, serif; font-size: 14px; } .doctext p { margin: 3px 0; }
+.doctext .hl { background: #ffe58a; outline: 2px solid #f0b400; } .ptype-section_heading { font-weight: 700; margin-top: 10px !important; }
+.ptype-medication_row, .ptype-table_header { font-family: monospace; font-size: 13px; }
+.error { background: #fee2e2; padding: 8px; border-radius: 6px; margin-top: 8px; }
