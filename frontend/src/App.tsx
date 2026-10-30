@@ -106,7 +106,7 @@ export default function App() {
     await api.review(pid, key, key.startsWith('conflict') ? 'conflict' : 'claim', status, summary)
     await run()
   }
-  const sections = resp?.sections ?? []
+  const sections = useMemo(() => resp?.sections ?? [], [resp])
   const shown = useMemo(() => {
     if (tab === 'medications') return sections.filter((s) => s.operation.includes('medication'))
     if (tab === 'diagnoses') return sections.filter((s) => s.operation === 'list_diagnoses')
