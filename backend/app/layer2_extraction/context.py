@@ -98,7 +98,7 @@ def _assertion(hits: list[ContextTrigger], is_question: bool, engine: str) -> As
 def _medspacy_nlp():
     try:
         import spacy
-        from medspacy.context import ConText, ConTextRule
+        from medspacy.context import ConText, ConTextRule  # noqa: F401 - availability check
     except ImportError:
         return None
     _, rules, clause, sentence, _ = _load()

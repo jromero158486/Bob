@@ -52,9 +52,12 @@ def parse_row(view: PassageView) -> Candidate | None:
         a, b, t = toks[i]
         nxt = toks[i + 1][2] if i + 1 < len(toks) else ""
         if i > 0 and _STRENGTH.match(t):
-            strength = _STRENGTH.match(t).groups(); value_spans.append((a, b))
+            strength = _STRENGTH.match(t).groups()
+            value_spans.append((a, b))
         elif i > 0 and _NUM.match(t) and _UNIT_ONLY.match(nxt) and strength is None:
-            strength = (t, nxt); value_spans.append((a, toks[i + 1][1])); i += 1
+            strength = (t, nxt)
+            value_spans.append((a, toks[i + 1][1]))
+            i += 1
         elif i > 0 and _ROUTE.match(t):
             route = t
         elif i > 0 and _FORM.match(t) and route is None and not schedule:
@@ -64,12 +67,16 @@ def parse_row(view: PassageView) -> Candidate | None:
             while j < len(toks) and _DOSE.match(toks[j][2]) and j - i < 4:
                 j += 1
             if j - i >= 3:
-                schedule = [x[2] for x in toks[i:j]]; sched_span = (a, toks[j - 1][1]); value_spans.append(sched_span)
+                schedule = [x[2] for x in toks[i:j]]
+                sched_span = (a, toks[j - 1][1])
+                value_spans.append(sched_span)
                 i = j - 1
             else:
                 unparsed.append(t)
         elif _FREQ.match(t):
-            freq = " ".join(x[2] for x in toks[i:]); value_spans.append((a, toks[-1][1])); break
+            freq = " ".join(x[2] for x in toks[i:])
+            value_spans.append((a, toks[-1][1]))
+            break
         elif i > 0 and _DOSE_UNIT.match(t) and (route is not None or strength is not None):
             dose_unit = t
         else:
@@ -120,7 +127,9 @@ def parse_narrative(view: PassageView) -> list[Candidate]:
         cursor = b
         m = _N_STRENGTH.match(text, b)
         if m:
-            strength = (m[1], m[2]); value_spans.append((m.start(1), m.end())); cursor = m.end()
+            strength = (m[1], m[2])
+            value_spans.append((m.start(1), m.end()))
+            cursor = m.end()
         window = text[cursor:cursor + 30]
         ms = _N_SCHED.search(window)
         mt = _N_TIME.search(window)

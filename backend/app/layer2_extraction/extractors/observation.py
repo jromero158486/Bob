@@ -38,7 +38,6 @@ def _lexicon(view: PassageView) -> list[Candidate]:
             val = _NUMBER + r"\s*(%|cm|kg|°C|mm|kg/m2|kg/m²)?"
         rx = re.compile(rf"(?<![\wÄÖÜäöü-])(?P<n>{names})(?![\wÄÖÜäöü]){_SEP}(?P<v>{val})", re.I if e["name"] not in ("lvef", "heart_rate") else 0)
         for m in rx.finditer(text):
-            g = m.groups()
             if e["name"] == "heart_rate":
                 lo, hi, mean = m.group(3), m.group(4), m.group(5)
                 v = _f(mean or lo)

@@ -11,7 +11,7 @@ from backend.app.layer3_store.db import make_engine, migrate
 from backend.app.layer3_store.repository import ClinicalStore
 from backend.app.layer4_planner.planner import plan_task
 from backend.app.layer6_verification.verify import ClaimVerifier
-from tests.test_layer2 import LETTER, doc
+from tests.test_layer2 import doc
 
 OTHER = ("Diagnosen:<BR>Asthma bronchiale<BR>Allergien:<BR>Penicillin-Allergie (Exanthem)<BR>"
          "Entlassungsmedikation:<BR>Applikation mo mi ab na Einheit Info<BR>Apixaban 5mg oral 1 0 1 0 ST<BR>")

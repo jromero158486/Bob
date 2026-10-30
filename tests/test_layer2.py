@@ -1,7 +1,6 @@
 """Layer 2 tests on fully synthetic German text (no IBM data)."""
 import hashlib
 import os
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
