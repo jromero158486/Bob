@@ -1,79 +1,65 @@
-# Clinical AI Platform — Layers 1–2: Provenance & Clinical Extraction
+# Lumen Clinical
 
-**Working milestones:** Layer 1 (ingestion/provenance) and Layer 2 (evidence-linked extraction, Milestone A). This is not a medical device and does not verify clinical truth. Layers 3–7 are next.
+**The right patient information, for the right clinician, with evidence you can check.**
 
-Requires Python >= 3.11. Quick start with [uv](https://docs.astral.sh/uv/):
+**Healthcare Hackathon Vienna 2026 · Track 1: Clinical Documentation**  
+**[Open the live demo](https://screenshot-stitchery-studio.lovable.app)** · [Scientific report](docs/SCIENTIFIC_REPORT.md)
 
-```bash
-uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -e '.[clinical,dev]'
-.venv/bin/python -m pytest -q
-.venv/bin/python -m backend.app.tools.extract_layer2 --input /private/data/patient-0000-0001 --show medication,allergy
-.venv/bin/python -m backend.app.tools.crosscheck_ibm --patient-dir /private/data/patient-0000-0001   # evaluation only
-CLINICAL_IBM_DATA=/private/data/patient-0000-0001 .venv/bin/python -m pytest -q   # + private-data integration test
+## The problem
+
+A patient's story is scattered across clinical letters, medication lists and reports. Finding what matters for a specific clinical task takes time. Records may disagree, and missing information can be mistaken for a documented negative finding.
+
+## Our solution
+
+**Lumen Clinical** turns German medical documents into a task-focused, evidence-linked clinical workspace. A clinician can describe **any role and question** in German or English. Lumen retrieves relevant information, brings together the patient's history, flags conflicting or missing details, and links findings to the **exact passages in the original documents**.
+
+**It supports clinical review; it does not replace clinical judgment.**
+
+## Try it in the demo
+
+1. **Preoperative review (German):** Role: `Anästhesistin` · Task: `Präoperative Abklärung: Allergien, Antikoagulation, Raucherstatus und relevante Herzbefunde?`
+2. **Cancer treatment (English):** `What is the planned breast cancer treatment and when, and what are the receptor status and Ki-67?`
+3. **Check the evidence:** Click any citation to see the original German text and highlighted source span; explore medication changes and record conflicts.
+4. **Optional claim checker:** Open **Verify clinical statement** to check whether a statement is supported, contradicted or not addressed by the record.
+
+## What it can do
+
+- **Task-adaptive summaries:** Different clinical roles and questions surface different information.
+- **Source-linked answers:** Click citations to inspect the original record, not just an AI-generated summary.
+- **Longitudinal overview:** Explore diagnoses, events and medication lists across documents.
+- **Discrepancy detection:** See conflicting values, dates and medication instructions.
+- **Missing-information alerts:** Distinguish *not documented* from *documented absent*.
+- **Human-in-the-loop review:** Review flagged findings; optionally verify a statement with multilingual NLI.
+
+## How it works — seven layers
+
+```mermaid
+flowchart TD
+    D["IBM synthetic patient documents<br/>(German clinical records)"] --> L1["L1 · Document ingestion & provenance<br/>Sections · exact source offsets"]
+    L1 --> L2["L2 · Clinical information extraction<br/>Diagnoses · medications · negation"]
+    L2 --> L3["L3 · Longitudinal knowledge store<br/>PostgreSQL · pgvector · dates"]
+
+    U["Clinician: role + open-ended task<br/>(German or English)"] --> L4["L4 · Task interpretation<br/>Rule-based planner · optional LLM"]
+    L4 --> L5["L5 · Relevant evidence retrieval<br/>Structured facts · BGE-M3 search"]
+    L3 -->|Patient facts and source passages| L5
+    L5 --> L6["L6 · Evidence and consistency checks<br/>Citations · conflicts · optional NLI"]
+    L6 --> L7["L7 · Adaptive clinical interface<br/>Summaries · timelines · evidence inspector"]
+    L7 --> O["Clinician reviews the result<br/>and opens original source evidence"]
 ```
 
-Layer 2 design, research components, licences and GERNERMED++ setup: `docs/LAYER2_EXTRACTION.md`.
+**Technology:** Python / FastAPI · medSpaCy + German ConText rules · PostgreSQL + pgvector · BGE-M3 multilingual retrieval · optional multilingual NLI verification · React / TypeScript / Lovable · Docker / Exoscale.
 
-This package intentionally **does not distribute IBM's original `data/` folder** or generated copies of it. Use the private hackathon ZIP on your machine. All offsets are Unicode codepoint positions in the *original JSON `text` string*, not UTF-8 byte offsets.
+## Early evaluation
 
-## 1. Run immediately (no model keys, no downloads required)
+On **one synthetic IBM patient (8 documents)**, our internal evaluation found:
 
-From the project root:
+- **Passage fact recall@10:** BGE-M3 dense retrieval **57%** versus **9%** for keyword-only retrieval (28 bilingual queries).
+- **Claim checking:** **0 false-supported claims** in a small 34-claim evaluation with deterministic checks plus multilingual NLI; contradiction recall was **55%**.
 
-```bash
-python -m backend.app.tools.ingest_layer1 --input '/private/AIM-hack-track1-shipit-main.zip' --engine rules
-python -m pytest -q
-```
+These are **preliminary, small-sample engineering results**, not evidence of clinical safety or generalization. See the [scientific report](docs/SCIENTIFIC_REPORT.md) for methods, baselines and limitations.
 
-- Accepts the original ZIP directly, a `patient-*` folder, a `documents/` folder, or a parent directory containing multiple patients.
-- Ingests `documents/*.json`, **not** IBM's `diagnoses.json`, `medication.json` and other pre-extracted structures as clinical truth.
-- Every original source substring is preserved and addressable by `passage_id`, checksum and offsets.
-- A complete visible-text coverage check runs for every document.
+## Scope and limitations
 
-To inspect a source citation explicitly:
+This is a **research prototype using synthetic hackathon data**, not a medical device. A *supported* claim means that it matches the cited record, **not that it has been clinically verified**. Advanced NLI verification is optional; the main response prioritizes speed and strict source integrity. The demo does not implement hospital-grade authentication or patient authorization.
 
-```bash
-python -m backend.app.tools.ingest_layer1 --input '/private/AIM-hack-track1-shipit-main.zip' --query 'Medikation'
-```
-
-To export a private BioC JSON file with passages and original offsets (**contains clinical source text**; never commit this output):
-
-```bash
-python -m backend.app.tools.ingest_layer1 --input '/private/AIM-hack-track1-shipit-main.zip' --export-bioc private_data/evidence.bioc.json
-```
-
-## 2. Use the published medSpaCy Sectionizer and BioC Python library
-
-With a package index available:
-
-```bash
-python -m pip install -e '.[clinical,dev]'
-python -m backend.app.tools.ingest_layer1 --input '/private/AIM-hack-track1-shipit-main.zip' --engine medspacy
-```
-
-`--engine auto` (the default) prefers the **actual** medSpaCy Sectionizer when installed; otherwise it uses the same explicit German heading rules with the built-in fallback. `--engine medspacy` fails loudly when the library isn't installed, so fallback can never be mistaken for medSpaCy. The `bioc` package is used for JSON serialization/validation when present. The equivalent BioC-JSON structure is exported using standard Python otherwise. **Neither library could be installed in the artifact-building environment because its package registry was unreachable; library-integrated execution therefore remains unverified here.**
-
-## 3. Algorithm and scope
-
-1. **IBM source adapter:** original JSON + full metadata, admission ID, hospital, namespaced patient ID, SHA-256. Ambiguous patient identity fails closed.
-2. **Reversible projection:** HTML-ish `<BR>`, entities and CRLF to readable text with one original source span per displayed character. Original text is never overwritten.
-3. **German sectionizer:** versionable dictionary of broad German clinical headings, optionally passed through the real medSpaCy Sectionizer (inspired by SecTag). Unknown colon headings retained as `unclassified`.
-4. **Conservative segmenter:** preserve clinical medication rows, table headers and measurement rows; split narrative with punctuation heuristics, merging lowercase continuations.
-5. **Evidence records:** immutable `EvidencePassage` objects with raw/document IDs, source checksum, original text offsets, section and type.
-6. **Integrity verifier:** raw slice equals source, checksum matches, no duplicate passage IDs, no uncovered non-whitespace normalized characters.
-7. **Optional BioC export:** passage-level offsets for annotation tools and future interoperability.
-
-Layer 1 itself does **not** infer diagnoses, ingredient codes, dosage meaning, normal ranges or clinical correctness; Layer 2 will do extraction. It does not currently parse arbitrary PDFs, OCR or production HL7 CDA/FHIR documents. Its adapters interface makes those additions possible, but they still require implementation and evaluation.
-
-## Papers and references
-
-- [medSpaCy / Sectionizer](https://github.com/medspacy/medspacy) — reusable clinical document sectioning.
-- [BioC interchange format](https://github.com/bionlplab/bioc) — offset-linked passages and annotations.
-- [CARDIO:DE (2023)](https://www.nature.com/articles/s41597-023-02128-9) — German clinical document classification reference; **not bundled or trained on**.
-- [ELGA technical guides](https://www.elga.gv.at/technischer-hintergrund/technische-elga-leitfaeden/) — design reference for future CDA adapter, **not yet integrated**.
-
-## Evaluation honesty
-
-A valid character offset proves a passage appears in the given source document, **not** that it was clinically extracted correctly. The unit tests exercise unknown headings, multi-patient isolation, source integrity, Unicode/HTML entities, medication-row preservation, and BioC output. Further manual evaluation of section accuracy, sentence splitting, completeness and new hospital templates is required before deployment.
-
-See `docs/IMPLEMENTATION_PLAN.md` for the remaining layers.
+**Project resources:** [Scientific report](docs/SCIENTIFIC_REPORT.md) · [Demo runbook](docs/DEMO_RUNBOOK.md) · [Windows backup setup](docs/WINDOWS_SETUP.md) · [Security limitations](docs/SECURITY_AND_AUTH.md)
