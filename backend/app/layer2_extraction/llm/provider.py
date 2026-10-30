@@ -34,7 +34,7 @@ class LLMProvider(Protocol):
 
 def _post(url: str, payload: dict, headers: dict, timeout: int) -> dict:
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST",
-                                 headers={"Content-Type": "application/json", **headers})
+                                 headers={"Content-Type": "application/json", "User-Agent": "clinical-ai-platform/0.1", **headers})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read())
