@@ -145,10 +145,17 @@ _ENC = [
 ]
 
 
+_CASE = re.compile(r"\bFall(?:-ID|zahl|nummer)?\s*:\s*(\d{4,})")
+
+
 def encounters(view: PassageView) -> list[Candidate]:
     text, out = view.text, []
     if view.passage.passage_type in ("section_heading", "table_header"):
         return []
+    for m in _CASE.finditer(text):
+        out.append(Candidate(view, m.start(), m.end(), "encounter_event", f"case number: {m[1]}",
+                             EncounterDetails(event="case_id", date_text=m[1], date_valid=True), use_context=False,
+                             value_spans=[m.span(1)]))
     for d in find_dates(text):
         if re.search(r"geb\.?\s*(?:am\s*)?$", text[:d.start]):
             continue

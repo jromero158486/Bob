@@ -75,6 +75,8 @@ def _blood_pressure(view: PassageView) -> list[Candidate]:
             continue
         ctx = (name_text or "") + " " + before[-25:]
         qual = next((q for k, q in _BP_QUAL if k in ctx), None)
+        if qual is None and re.search(r"\bAufnahme\b", text):
+            qual = "at admission"
         if qual is None and re.search(r"\bbis\s*$", before):
             qual = "peak"
         out.append(Candidate(view, m.start(), m.end(), "observation", f"{name_text or 'RR'}: {m[0].strip()}",

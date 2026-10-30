@@ -127,7 +127,7 @@ class RecommendationDetails(_Frozen):
 
 
 class EncounterDetails(_Frozen):
-    event: Literal["admission", "discharge", "visit", "sample_taken", "examination"]
+    event: Literal["admission", "discharge", "visit", "sample_taken", "examination", "case_id"]
     date_text: str
     date_valid: bool
 

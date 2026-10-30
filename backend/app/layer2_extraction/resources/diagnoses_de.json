@@ -1,30 +1,219 @@
 {
-  "version": "dx-lexicon-de-0.1",
-  "license_note": "ICD-10 candidate codes (WHO ICD-10 / Austrian ICD-10 BMSGPK share these categories); hand-curated subset, codes are candidates for review, not billing codes. Entries with code null are recognised but intentionally uncoded.",
-  "entries": [
-    {"display": "Hypertensive crisis", "icd10": null, "patterns": ["hypertensive[rn]?\\s+(?:Krise|Entgleisung)", "Blutdruckentgleisung"]},
-    {"display": "Pulmonary hypertension", "icd10": null, "patterns": ["pulmonale[rn]?\\s+Hypertonie"]},
-    {"display": "Essential (primary) hypertension", "icd10": "I10", "level": "specific", "patterns": ["\\bart(?:\\.|erielle[rn]?)?\\s*(?:Hypertonie|HTN|HT)\\b", "\\bHTN\\b"]},
-    {"display": "Type 2 diabetes mellitus", "icd10": "E11", "level": "category", "patterns": ["Diabetes\\s+mellitus\\s+Typ\\s*(?:II|2)\\b", "Diab\\.?\\s*Mell\\.?\\s*(?:II|2)\\b", "\\bDM\\s?II\\b", "\\bNIDDM\\s?II?\\b", "\\bT2DM\\b"]},
-    {"display": "Hyperlipidaemia", "icd10": "E78.5", "level": "specific", "patterns": ["Hyperlipidämie", "\\bHLP\\b", "Dyslipidämie"]},
-    {"display": "Pure hypercholesterolaemia", "icd10": "E78.0", "level": "specific", "patterns": ["Hypercholesterinämie"]},
-    {"display": "Gastro-oesophageal reflux disease", "icd10": "K21", "level": "category", "patterns": ["Gastroösophageale\\s+Refluxkrankheit", "\\bGERD\\b", "Refluxösophagitis"]},
-    {"display": "Hiatus hernia", "icd10": "K44.9", "level": "specific", "patterns": ["Hiatushernie"]},
-    {"display": "Systemic lupus erythematosus", "icd10": "M32.9", "level": "specific", "patterns": ["Systemischer\\s+Lupus\\s+erythematodes", "\\bSLE\\b"]},
-    {"display": "Vitamin D deficiency", "icd10": "E55.9", "level": "specific", "patterns": ["Vitamin-?\\s?D-?\\s?Mangel"]},
-    {"display": "Osteoporosis", "icd10": "M81", "level": "category", "patterns": ["Osteoporose"]},
-    {"display": "Sleep apnoea", "icd10": "G47.3", "level": "specific", "patterns": ["Schlafapnoe"]},
-    {"display": "Amaurosis fugax", "icd10": "G45.3", "level": "specific", "patterns": ["Amaurosis\\s+fugax"]},
-    {"display": "Carotid artery stenosis", "icd10": "I65.2", "level": "specific", "patterns": ["[CK]arotis-?\\s?stenose", "[CK]arotissklerose", "Stenose\\s+der\\s+A\\.\\s*[CK]arotis", "Abgangsstenose\\s+der\\s+Arteria\\s+carotis", "Stenose\\s+an\\s+der\\s+(?:linken|rechten)\\s+[CK]arotis\\w*"]},
-    {"display": "Hypertensive retinopathy", "icd10": "H35.0", "level": "specific", "patterns": ["hypertensive\\s+Retinopathie", "Fundus\\s+hypertonicus"]},
-    {"display": "Papilloedema", "icd10": "H47.1", "level": "specific", "patterns": ["Papillenödem"]},
-    {"display": "Malignant neoplasm of breast", "icd10": "C50", "level": "category", "patterns": ["invasiv\\s+duktal\\w*\\s+Mammakarzinom\\w*", "Mamma-?\\s?(?:Ca|karzinom)\\b", "Mammakarzinom\\w*"]},
-    {"display": "Atrial fibrillation", "icd10": "I48", "level": "category", "patterns": ["Vorhofflimmern", "\\bVHF\\b"]},
-    {"display": "Pericardial effusion", "icd10": "I31.3", "level": "specific", "patterns": ["Perikarderguss", "Perikarderguß"]},
-    {"display": "Arrhythmia", "icd10": null, "patterns": ["Arrhythmie\\w*"]},
-    {"display": "Intracranial haemorrhage", "icd10": null, "patterns": ["\\bBlutung\\b"]},
-    {"display": "Ischaemia", "icd10": null, "patterns": ["Ischämie"]},
-    {"display": "Atherosclerosis", "icd10": null, "patterns": ["a[r]?t[h]?e?r[i]?osklerotisch\\w*\\s+(?:Gefäßschaden|Veränderungen|Stenose)"]},
-    {"display": "Overweight", "icd10": null, "patterns": ["Übergewicht"]}
-  ]
+ "version": "dx-lexicon-de-0.1",
+ "license_note": "ICD-10 candidate codes (WHO ICD-10 / Austrian ICD-10 BMSGPK share these categories); hand-curated subset, codes are candidates for review, not billing codes. Entries with code null are recognised but intentionally uncoded.",
+ "entries": [
+  {
+   "display": "Lymphadenopathy",
+   "icd10": "R59",
+   "level": "category",
+   "patterns": [
+    "vergrößerte[n]?\\s+Lymphknoten"
+   ]
+  },
+  {
+   "display": "Hypertensive crisis",
+   "icd10": null,
+   "patterns": [
+    "hypertensive[rn]?\\s+(?:Krise|Entgleisung)",
+    "Blutdruckentgleisung"
+   ]
+  },
+  {
+   "display": "Pulmonary hypertension",
+   "icd10": null,
+   "patterns": [
+    "pulmonale[rn]?\\s+Hypertonie"
+   ]
+  },
+  {
+   "display": "Essential (primary) hypertension",
+   "icd10": "I10",
+   "level": "specific",
+   "patterns": [
+    "\\bart(?:\\.|erielle[rn]?)?\\s*(?:Hypertonie|HTN|HT)\\b",
+    "\\bHTN\\b"
+   ]
+  },
+  {
+   "display": "Type 2 diabetes mellitus",
+   "icd10": "E11",
+   "level": "category",
+   "patterns": [
+    "Diabetes\\s+mellitus\\s+Typ\\s*(?:II|2)\\b",
+    "Diab\\.?\\s*Mell\\.?\\s*(?:II|2)\\b",
+    "\\bDM\\s?II\\b",
+    "\\bNIDDM\\s?II?\\b",
+    "\\bT2DM\\b"
+   ]
+  },
+  {
+   "display": "Hyperlipidaemia",
+   "icd10": "E78.5",
+   "level": "specific",
+   "patterns": [
+    "Hyperlipidämie",
+    "\\bHLP\\b",
+    "Dyslipidämie"
+   ]
+  },
+  {
+   "display": "Pure hypercholesterolaemia",
+   "icd10": "E78.0",
+   "level": "specific",
+   "patterns": [
+    "Hypercholesterinämie"
+   ]
+  },
+  {
+   "display": "Gastro-oesophageal reflux disease",
+   "icd10": "K21",
+   "level": "category",
+   "patterns": [
+    "Gastroösophageale\\s+Refluxkrankheit",
+    "\\bGERD\\b",
+    "Refluxösophagitis"
+   ]
+  },
+  {
+   "display": "Hiatus hernia",
+   "icd10": "K44.9",
+   "level": "specific",
+   "patterns": [
+    "Hiatushernie"
+   ]
+  },
+  {
+   "display": "Systemic lupus erythematosus",
+   "icd10": "M32.9",
+   "level": "specific",
+   "patterns": [
+    "Systemischer\\s+Lupus\\s+erythematodes",
+    "\\bSLE\\b"
+   ]
+  },
+  {
+   "display": "Vitamin D deficiency",
+   "icd10": "E55.9",
+   "level": "specific",
+   "patterns": [
+    "Vitamin-?\\s?D-?\\s?Mangel"
+   ]
+  },
+  {
+   "display": "Osteoporosis",
+   "icd10": "M81",
+   "level": "category",
+   "patterns": [
+    "Osteoporose"
+   ]
+  },
+  {
+   "display": "Sleep apnoea",
+   "icd10": "G47.3",
+   "level": "specific",
+   "patterns": [
+    "Schlafapnoe"
+   ]
+  },
+  {
+   "display": "Amaurosis fugax",
+   "icd10": "G45.3",
+   "level": "specific",
+   "patterns": [
+    "Amaurosis\\s+fugax"
+   ]
+  },
+  {
+   "display": "Carotid artery stenosis",
+   "icd10": "I65.2",
+   "level": "specific",
+   "patterns": [
+    "[CK]arotis-?\\s?stenose",
+    "[CK]arotissklerose",
+    "Stenose\\s+der\\s+A\\.\\s*[CK]arotis",
+    "Abgangsstenose\\s+der\\s+Arteria\\s+carotis",
+    "Stenose\\s+an\\s+der\\s+(?:linken|rechten)\\s+[CK]arotis\\w*"
+   ]
+  },
+  {
+   "display": "Hypertensive retinopathy",
+   "icd10": "H35.0",
+   "level": "specific",
+   "patterns": [
+    "hypertensive\\s+Retinopathie",
+    "Fundus\\s+hypertonicus"
+   ]
+  },
+  {
+   "display": "Papilloedema",
+   "icd10": "H47.1",
+   "level": "specific",
+   "patterns": [
+    "Papillenödem"
+   ]
+  },
+  {
+   "display": "Malignant neoplasm of breast",
+   "icd10": "C50",
+   "level": "category",
+   "patterns": [
+    "invasiv\\s+duktal\\w*\\s+Mammakarzinom\\w*",
+    "Mamma-?\\s?(?:Ca|karzinom)\\b",
+    "Mammakarzinom\\w*"
+   ]
+  },
+  {
+   "display": "Atrial fibrillation",
+   "icd10": "I48",
+   "level": "category",
+   "patterns": [
+    "Vorhofflimmern",
+    "\\bVHF\\b"
+   ]
+  },
+  {
+   "display": "Pericardial effusion",
+   "icd10": "I31.3",
+   "level": "specific",
+   "patterns": [
+    "Perikarderguss",
+    "Perikarderguß"
+   ]
+  },
+  {
+   "display": "Arrhythmia",
+   "icd10": null,
+   "patterns": [
+    "Arrhythmie\\w*"
+   ]
+  },
+  {
+   "display": "Intracranial haemorrhage",
+   "icd10": null,
+   "patterns": [
+    "\\bBlutung\\b"
+   ]
+  },
+  {
+   "display": "Ischaemia",
+   "icd10": null,
+   "patterns": [
+    "Ischämie"
+   ]
+  },
+  {
+   "display": "Atherosclerosis",
+   "icd10": null,
+   "patterns": [
+    "a[r]?t[h]?e?r[i]?osklerotisch\\w*\\s+(?:Gefäßschaden|Veränderungen|Stenose)"
+   ]
+  },
+  {
+   "display": "Overweight",
+   "icd10": null,
+   "patterns": [
+    "Übergewicht"
+   ]
+  }
+ ]
 }
