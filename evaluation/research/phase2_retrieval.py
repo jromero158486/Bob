@@ -81,12 +81,14 @@ def main():
                for c in json.loads(Path(a.cases).read_text())]
     if a.extra_queries:
         queries += [json.loads(line) for line in Path(a.extra_queries).read_text().splitlines() if line.strip()]
+    excluded = [q["id"] for q in queries if not q["sources"]]  # "not documented" questions have no gold passage
+    queries = [q for q in queries if q["sources"]]
     store = ClinicalStore(make_engine(a.database_url))
     from backend.app.layer5_retrieval.embeddings import shared_encoder, shared_reranker
     enc, rr = shared_encoder(), shared_reranker()
     res = {"commit": subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip(),
            "embedding_model": f"{enc.name}@{enc.revision}", "reranker": f"{rr.name}@{rr.revision}",
-           "pgvector": store.has_pgvector(), "k": a.k, "queries": len(queries),
+           "pgvector": store.has_pgvector(), "k": a.k, "queries": len(queries), "excluded_no_gold_source": excluded,
            "relevance": "document-level (gold source document ids)", "modes": run(store, a.patient_id, queries, a.k)}
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(res, indent=2, ensure_ascii=False))

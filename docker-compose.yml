@@ -3,7 +3,7 @@
 # Exoscale: same file on a VM (or point DATABASE_URL at Exoscale DBaaS PostgreSQL and drop the db service).
 services:
   db:
-    image: public.ecr.aws/docker/library/postgres:16-alpine
+    image: pgvector/pgvector:pg16  # PostgreSQL 16 + pgvector (migration 0002 adds dense_vec when available)
     environment:
       POSTGRES_USER: clinical
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clinical}

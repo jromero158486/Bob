@@ -40,3 +40,34 @@ Failure analysis (both engines): post-posed negation ("wurde nicht beobachtet/fe
 ("verneint"), hedges ("am ehesten", "möglicherweise", "nicht auszuschließen"), negated family history. medSpaCy
 additionally misses `Z.n.`, `St.p.`, `Vd.a.` (spaCy's German tokenizer splits the abbreviations, so its token-aligned
 matcher drops them) — the reason the native engine is the default.
+
+## §1b Extraction ablation (`python -m evaluation.research.phase1_extraction`, commit 5182ead)
+
+IBM patient-0000-0001 (8 German documents), medSpaCy sectioning, IBM extracted JSON as **silver** reference
+(evaluation only). Document-level matching: (document, ATC) for medications, (document, ICD-10 3-char) for
+affirmed diagnoses, (document, observation name) restricted to names the reference covers.
+
+| config | facts | needs_review | grounded | med P/R/F1 | dx P/R/F1 | obs P/R/F1 | time |
+|---|---|---|---|---|---|---|---|
+| rules | 284 | 1 | 284/284 | 1.00/1.00/1.00 | 0.974/0.661/0.787 | 1.00/1.00/1.00 | 0.15 s |
+| rules + GERNERMED++ | 285 (+1 model-only) | 2 | 285/285 | 1.00/1.00/1.00 | 0.974/0.661/0.787 | 1.00/1.00/1.00 | 14–17 s |
+| rules + LLM (gpt-oss-120b) | 324–329 (+40–45 LLM) | 41–46 | all | 1.00/1.00/1.00 | 0.974/0.661/0.787 | 1.00/1.00/1.00 | 45–68 s |
+
+LLM added diagnoses (+24), procedures (+6), recommendations (+5) and medications (+5) (run 1). None changed the
+silver-standard scores: the 19 missed (document, ICD-3) pairs are mostly concepts negated in the source (I27, I31,
+I49) or absent from the local lexicon (H34/H53/H54, D48, G93, E66, I50), and the lexicon-based candidate linker
+(added in 5182ead) cannot code what the lexicon lacks.
+
+GERNERMED++ attribute association (21 rule-extracted medications, nearest-Drug association within 40 chars):
+
+| | rule has attribute | GERNERMED++ found | agrees |
+|---|---|---|---|
+| drug | 21 | 21 | — |
+| strength | 17 | 17 | 17 |
+| frequency / schedule | 20 | 7 | presence only |
+| route | 16 | 0 | — (no Route entities emitted) |
+| form | 4 | 4 | presence only |
+
+Conclusion: on this patient GERNERMED++ confirms drugs and strengths but adds no correct new medication; it misses
+most German table schedules ("1 0 1/2 0") and all routes. The deterministic parser stays primary.
+Limits: one synthetic patient, silver reference, rules partly tuned on the same documents.
