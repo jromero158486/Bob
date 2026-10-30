@@ -262,6 +262,291 @@
     }
    }
   },
+  "/api/v1/patients": {
+   "get": {
+    "summary": "V1 Patients",
+    "operationId": "v1_patients_api_v1_patients_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/patients/{pid}": {
+   "get": {
+    "summary": "V1 Patient",
+    "operationId": "v1_patient_api_v1_patients__pid__get",
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Pid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/patients/{pid}/documents": {
+   "get": {
+    "summary": "V1 Documents",
+    "operationId": "v1_documents_api_v1_patients__pid__documents_get",
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Pid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/patients/{pid}/longitudinal": {
+   "get": {
+    "summary": "V1 Longitudinal",
+    "operationId": "v1_longitudinal_api_v1_patients__pid__longitudinal_get",
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Pid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/clinical-tasks": {
+   "post": {
+    "summary": "V1 Task",
+    "operationId": "v1_task_api_v1_clinical_tasks_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TaskIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/patients/{pid}/review-items": {
+   "get": {
+    "summary": "V1 Review Items",
+    "operationId": "v1_review_items_api_v1_patients__pid__review_items_get",
+    "parameters": [
+     {
+      "name": "pid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Pid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/review-items/{item_id}/decision": {
+   "post": {
+    "summary": "V1 Decision",
+    "operationId": "v1_decision_api_v1_review_items__item_id__decision_post",
+    "parameters": [
+     {
+      "name": "item_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Item Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DecisionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/verify-statement": {
+   "post": {
+    "summary": "V1 Verify",
+    "operationId": "v1_verify_api_v1_verify_statement_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VerifyIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VerifyTextResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/verify": {
    "post": {
     "summary": "Verify",
@@ -764,6 +1049,51 @@
      "citations"
     ],
     "title": "ConflictOut"
+   },
+   "DecisionIn": {
+    "properties": {
+     "reviewItemId": {
+      "type": "string",
+      "title": "Reviewitemid"
+     },
+     "factId": {
+      "type": "string",
+      "title": "Factid"
+     },
+     "decision": {
+      "type": "string",
+      "title": "Decision"
+     },
+     "comment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Comment"
+     },
+     "correctedStatement": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Correctedstatement"
+     }
+    },
+    "type": "object",
+    "required": [
+     "reviewItemId",
+     "factId",
+     "decision"
+    ],
+    "title": "DecisionIn"
    },
    "DocumentOut": {
     "properties": {
@@ -1409,6 +1739,54 @@
     "type": "object",
     "title": "StepFilters"
    },
+   "TaskIn": {
+    "properties": {
+     "patientId": {
+      "type": "string",
+      "title": "Patientid"
+     },
+     "task": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 3,
+      "title": "Task"
+     },
+     "role": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Role"
+     },
+     "locale": {
+      "type": "string",
+      "title": "Locale",
+      "default": "de"
+     },
+     "referenceDate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Referencedate"
+     }
+    },
+    "type": "object",
+    "required": [
+     "patientId",
+     "task"
+    ],
+    "title": "TaskIn"
+   },
    "TaskPlan": {
     "properties": {
      "task_summary": {
@@ -1756,6 +2134,31 @@
     },
     "type": "object",
     "title": "VerificationSummary"
+   },
+   "VerifyIn": {
+    "properties": {
+     "patientId": {
+      "type": "string",
+      "title": "Patientid"
+     },
+     "statement": {
+      "type": "string",
+      "maxLength": 5000,
+      "minLength": 3,
+      "title": "Statement"
+     },
+     "judge": {
+      "type": "string",
+      "title": "Judge",
+      "default": "nli"
+     }
+    },
+    "type": "object",
+    "required": [
+     "patientId",
+     "statement"
+    ],
+    "title": "VerifyIn"
    },
    "VerifyTextRequest": {
     "properties": {

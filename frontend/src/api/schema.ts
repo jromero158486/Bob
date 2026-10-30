@@ -58,6 +58,14 @@ export type ConflictOut = {
   review_status?: string | null;
 };
 
+export type DecisionIn = {
+  reviewItemId: string;
+  factId: string;
+  decision: string;
+  comment?: string | null;
+  correctedStatement?: string | null;
+};
+
 export type DocumentOut = {
   document_id: string;
   title: string;
@@ -169,6 +177,14 @@ export type StepFilters = {
   statuses?: string[];
 };
 
+export type TaskIn = {
+  patientId: string;
+  task: string;
+  role?: string | null;
+  locale?: string;
+  referenceDate?: string | null;
+};
+
 export type TaskPlan = {
   task_summary: string;
   as_of?: string | null;
@@ -230,6 +246,12 @@ export type VerificationSummary = {
   citations_valid?: number;
   verification_incomplete?: number;
   checks?: string[];
+};
+
+export type VerifyIn = {
+  patientId: string;
+  statement: string;
+  judge?: string;
 };
 
 export type VerifyTextRequest = {
