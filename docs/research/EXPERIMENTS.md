@@ -71,3 +71,31 @@ GERNERMED++ attribute association (21 rule-extracted medications, nearest-Drug a
 Conclusion: on this patient GERNERMED++ confirms drugs and strengths but adds no correct new medication; it misses
 most German table schedules ("1 0 1/2 0") and all routes. The deterministic parser stays primary.
 Limits: one synthetic patient, silver reference, rules partly tuned on the same documents.
+
+## §2 Retrieval ablation (`python -m evaluation.research.phase2_retrieval`, commit 90e8bae)
+
+Store: PostgreSQL 16 + pgvector, IBM patient (354 passages, all indexed with BGE-M3 rev 5617a9f61b02 in
+one ingest run). Queries: the 14 IBM benchmark questions that have a gold source (English, over German documents)
+plus author-written German translations of the same 14 (private, outside the repo). Lexical terms come from the
+production planner's `_search_terms`; the model query is `"<question>: <terms>"`. Relevance is
+**document-level**: a passage counts as relevant if it comes from a gold source document. k = 10, CPU only, model
+load excluded from latency.
+
+| mode | doc-recall@10 | MRR | nDCG@10 | P@10 | empty results | median / max latency |
+|---|---|---|---|---|---|---|
+| lexical (baseline) | 0.280 | 0.233 | 0.109 | 0.093 | 18/28 | 3 / 14 ms |
+| BGE-M3 dense (pgvector) | **0.982** | **0.882** | **0.632** | **0.593** | 0/28 | 298 / 466 ms |
+| hybrid RRF (lexical + dense + sparse + ColBERT) | 0.875 | 0.801 | 0.573 | 0.543 | 0/28 | 318 / 541 ms |
+| hybrid + bge-reranker-v2-m3 (top 20) | 0.899 | 0.801 | 0.612 | 0.579 | 0/28 | 4.7 / 8.9 s |
+
+By language (dense): EN doc-recall 1.00 / MRR 0.87, DE 0.96 / 0.89. Lexical: EN 0.38 / 0.36, DE 0.18 / 0.11
+(the planner's term extraction uses an English stop-word list, so German questions produce poor terms).
+
+Findings: BGE-M3 dense retrieval removes the cross-language failure of lexical search (18 of 28 lexical queries
+returned nothing). Unweighted RRF with the weaker lexical, sparse and ColBERT lists *lowers* quality against dense
+alone; the reranker recovers part of it at ~15x latency. The production default stays `RETRIEVAL_MODE=lexical`
+until hybrid weighting is tuned on data other than this test set; `dense` is the best configuration measured here.
+
+Caveats: 8 documents and 1–3 gold documents per question make document-level recall easy to inflate (no
+passage-level gold exists); one synthetic patient; German translations are author-written; this measures the
+`search_text` step only, not structured-fact answers.
