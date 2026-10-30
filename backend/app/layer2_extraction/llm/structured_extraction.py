@@ -13,7 +13,10 @@ from pydantic import BaseModel, Field, ValidationError
 
 from backend.app.layer2_extraction.contracts import (ComponentRun, DiagnosisDetails, ExtractorInfo, MedicationDetails,
                                                      ProcedureDetails, RecommendationDetails)
+from backend.app.layer2_extraction import terminology
 from backend.app.layer2_extraction.extractors.base import Candidate
+from backend.app.layer2_extraction.extractors.clinical import _icd
+from backend.app.layer2_extraction.extractors.medication import _coding as _atc
 from backend.app.layer2_extraction.llm.provider import LLMProvider, LLMUnavailable
 from backend.app.layer2_extraction.passage_view import PassageView
 
@@ -39,6 +42,18 @@ SYSTEM = ("You extract clinical facts from German clinical letter passages. Only
 
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
+
+
+def candidate_codings(fact_type: str, text: str) -> tuple:
+    """Terminology candidates for an LLM span from the local lexicons; always unverified (fact needs_review)."""
+    if fact_type == "diagnosis":
+        hits = terminology.diagnoses(text)
+        codings = _icd(hits[0]) if hits else ()
+    elif fact_type == "medication":
+        codings = _atc(terminology.medication_by_name(text))
+    else:
+        return ()
+    return tuple(c.model_copy(update={"mapping_source": f"{c.mapping_source}; candidate from LLM span"}) for c in codings)
 
 
 def ground(proposal: LLMFactProposal, views: list[PassageView]) -> tuple[PassageView, int, int] | None:
@@ -85,8 +100,10 @@ def llm_candidates(all_views: list[PassageView], provider: LLMProvider, batch: i
                 notes = ["LLM proposal grounded by verbatim quote; not verified"]
                 if prop.relation:
                     notes.append(f"relation: {prop.relation}")
+                codings = candidate_codings(prop.fact_type, v.text[s:e])
                 out.setdefault(index[id(v)], []).append(Candidate(v, s, e, prop.fact_type, prop.label, details,
-                                                                  extractor=info, needs_review=True, notes=notes))
+                                                                  codings=codings, extractor=info, needs_review=True,
+                                                                  notes=notes))
                 accepted += 1
     except LLMUnavailable as exc:
         # Facts accepted before the failure are kept (each is quote-grounded and needs_review) but reported as partial.

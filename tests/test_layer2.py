@@ -251,3 +251,11 @@ def test_bioc_export_carries_fact_annotations_at_original_offsets(result):
         loc = a.locations[0]
         assert original[loc.offset:loc.offset + loc.length] == a.text
         assert a.infons["extractor"] and a.infons["type"]
+
+
+def test_llm_span_gets_unverified_terminology_candidate():
+    from backend.app.layer2_extraction.llm.structured_extraction import candidate_codings
+    (icd,) = candidate_codings("diagnosis", "arterielle Hypertonie")
+    assert icd.code.startswith("I10") and "candidate" in icd.mapping_source
+    assert candidate_codings("diagnosis", "völlig unbekannte Entität") == ()
+    assert candidate_codings("procedure", "Koronarangiographie") == ()
