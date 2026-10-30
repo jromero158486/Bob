@@ -99,3 +99,74 @@ until hybrid weighting is tuned on data other than this test set; `dense` is the
 Caveats: 8 documents and 1–3 gold documents per question make document-level recall easy to inflate (no
 passage-level gold exists); one synthetic patient; German translations are author-written; this measures the
 `search_text` step only, not structured-fact answers.
+
+## §2b Phase 2 deployment, fusion tuning and passage-level evaluation (commits d83c54f…d20c9c7)
+
+**Deployment (Docker Compose, private IBM data, CPU-only VM).** `db` = `pgvector/pgvector:pg16`, `models` = BGE-M3 +
+bge-reranker-v2-m3 kept loaded in a separate service (`backend/Dockerfile.models`, weights in a persistent HF cache
+volume), `backend` uses it through `EMBEDDING_SERVICE_URL`. The existing volume created by `postgres:16-alpine`
+(musl) broke under the glibc image: text btree indexes were invalid, so the composite FK check on
+`passage_embeddings` could not "see" existing passages (`ForeignKeyViolation`). Migration `0003` reindexes every table;
+after it, the existing volume was kept and all 354 passages were embedded (`pgvector: true`), and a restart re-uses
+them (`already_indexed: 354`). `REFRESH COLLATION VERSION` is not possible (musl records no version).
+
+Warmed Docker API, unseen requests, `RETRIEVAL_MODE=auto`, Groq planner with `OPENAI_REASONING_EFFORT=low`
+(wall time per `POST /api/tasks`, measured by the client):
+
+| Request | retrieval_used | plan | retrieve | verify | total | citations valid |
+|---|---|---|---|---|---|---|
+| DE anaesthesia: bleeding risk / anticoagulation | dense:pgvector | 2.3 s | 0.5 s | 0.2 s | 3.0 s | 22/22 |
+| EN physiotherapist: mobility, falls, deficits | dense:pgvector | 1.9 s | 1.2 s | 0.2 s | 3.3 s | 22/22 |
+| EN brain imaging | dense:pgvector | 1.7 s | 0.5 s | 0.2 s | 2.4 s | 5/5 |
+| DE mammography / breast biopsy findings | dense:pgvector | 1.7 s | 0.9 s | 0.2 s | 2.7 s | 22/22 |
+
+Explicit modes on the same request: `lexical` 0.2 s retrieval, `dense` 0.9 s, `hybrid` 0.9 s, `hybrid_rerank` 8.0 s
+(cross-encoder over the fused top 20 on CPU; above budget together with planning). Groq planner latency varied
+between 1.6 s and 15 s across calls (default reasoning effort, rate-limit back-off); planning is now bounded by
+`PLANNER_TIMEOUT` (10 s) and `PLANNER_RETRIES` (1) with a reported heuristic fallback. A first run without the
+sign-off filter returned "befundet: Dr. Arzt vidiert: Dr. Arzt" as a top dense hit; sign-off-only passages are now
+excluded from retrieval (they remain in the store and in citations of other passages' documents).
+IBM benchmark with the heuristic planner on the pgvector DB: `auto` (dense) and `lexical` give identical answer
+scores (57/61 key terms, 27/28 exact values; new tasks 23/23), median 1.3 s vs 0.5 s per task.
+
+**Why equal-weight RRF hurt (validation queries only: the 10 private generalisation tasks, 9 with gold documents;
+disjoint from the 28 evaluation queries and the passage set).** Document-level, k=10:
+
+| Ranking alone | MRR | nDCG@10 | empty |
+|---|---|---|---|
+| lexical | 0.333 | 0.089 | 5/9 |
+| BGE-M3 dense | 0.870 | 0.443 | 0 |
+| BGE-M3 sparse | 0.676 | 0.378 | 0 |
+| BGE-M3 multi-vector | 0.741 | 0.465 | 0 |
+| equal RRF (k=60) | 0.528 | 0.373 | |
+| selected: dense 1, lexical 1, sparse 0.5, colbert 0, k=10 | 0.815 | 0.481 | |
+
+With RRF k=60 the reciprocal-rank curve is nearly flat over the top 10, so a passage ranked moderately by three
+weaker rankings outscores dense's top hit; the weak lexical ranking (empty or off-topic for 5/9 queries) adds noise.
+Weighted RRF (`HYBRID_WEIGHTS`, `RRF_K`) was grid-searched (`evaluation/research/fusion_tuning.py`; selection criterion
+nDCG@10 then MRR, fixed before running). Nine queries is far too few for a reliable choice; `auto` stays dense.
+
+**Passage-level evaluation (`evaluation/research/passage_eval.py`).** 14 IBM questions with gold documents × EN/DE
+(28 queries), 28 atomic answer facts, 44 gold passages. Each fact's supporting passages were identified by an
+author-written pattern whose matches over all 354 passages were reviewed by hand (e.g. the 2015 Blopress dose is
+excluded for "current antihypertensive"). Gold file kept private. Retrieval uses the production term extraction
+with one search step:
+
+| Mode | fact recall@6 | fact recall@10 | passage recall@10 | MRR | nDCG@10 | median / max |
+|---|---|---|---|---|---|---|
+| lexical | 0.089 | 0.089 | 0.086 | 0.126 | 0.081 | 4 ms / 15 ms |
+| dense | 0.488 | 0.571 | 0.429 | 0.430 | 0.381 | 231 ms / 451 ms |
+| hybrid, equal RRF | 0.518 | 0.601 | 0.445 | 0.489 | 0.399 | 254 ms / 493 ms |
+| hybrid, tuned | 0.476 | 0.512 | 0.423 | 0.517 | 0.411 | 265 ms / 429 ms |
+| hybrid + reranker | 0.565 | 0.631 | 0.475 | 0.553 | 0.455 | 6.98 s / 11.9 s |
+
+End to end (`run_task`, heuristic planner, structured retrieval + passage search + verification), share of answer
+facts whose supporting text is cited by a claim: lexical 0.964 (supported claims 0.964), auto/dense 0.964 (0.964);
+median 0.47 s vs 0.79 s, max 0.93 s vs 1.25 s. The single miss is 1.3-de (EF 60%).
+
+Interpretation: the 98% document-level hit rate in §2 is **not** retrieval accuracy for answers: at passage level dense
+finds a supporting passage for 57% of facts in the top 10. End-to-end completeness is high mainly because structured
+facts (medications, observations, diagnoses) answer most of these questions, and the lexicon was tuned on them.
+At passage level the differences between dense and the hybrid variants are small and inconsistent across metrics
+(equal RRF wins fact recall, tuned wins MRR/nDCG, the opposite of the document-level ranking); only the reranker is
+consistently better, at ~7 s per search step on CPU. 28 queries over one patient: no significance claims.
