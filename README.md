@@ -1,6 +1,6 @@
 # LEVRIQ
 
-![LEVRIQ Clinical Interface](docs/levriq.png)
+![LEVRIQ Clinical Interface](docs/Levriq.png)
 
 **The right patient information for the right clinician, with evidence you can check.**
 
