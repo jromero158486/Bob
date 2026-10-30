@@ -27,5 +27,5 @@ IBM_DATA_DIR=<ibm>/data HF_CACHE_DIR=~/.cache/huggingface docker compose up -d
 ```
 
 Set the Lovable API base URL to `http://localhost:8000` (the browser on the demo machine reaches its own loopback).
-If `DEMO_API_TOKEN` is set, send it as the `X-Demo-Token` header. Do not expose port 8000 publicly. If a public
+If `DEMO_API_TOKEN` is set, send it as `Authorization: Bearer <token>`. Do not expose port 8000 publicly. If a public
 tunnel is unavoidable for the demo, set `DEMO_API_TOKEN` first.
