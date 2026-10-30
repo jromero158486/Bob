@@ -223,7 +223,8 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
             for c in s.claims:
                 facts[c.claim_id] = _fact_from_claim(c, docs, s.concept)
             if s.claims and len(summary) < 5 and s.outcome != "not_documented":
-                summary.append({"text": f"{s.title}: {s.claims[0].text}", "factIds": [s.claims[0].claim_id]})
+                latest = max(s.claims, key=lambda c: (c.date or (c.citations[0].document_date if c.citations else "") or ""))
+                summary.append({"text": f"{s.title}: {latest.text}", "factIds": [latest.claim_id]})  # most recent
             if not s.claims:  # reported in the missing-information block instead
                 continue
             blocks.append({"id": s.section_id, "kind": "fact_list", "title": s.title,
