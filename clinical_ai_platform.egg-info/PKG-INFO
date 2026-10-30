@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: clinical-ai-platform
+Version: 0.1.0
+Summary: German clinical ingestion with exact evidence provenance (not a medical device)
+Requires-Python: >=3.11
+Provides-Extra: clinical
+Requires-Dist: spacy<4,>=3.7; extra == "clinical"
+Requires-Dist: medspacy<2,>=1.3; extra == "clinical"
+Requires-Dist: bioc<3,>=2.1; extra == "clinical"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"

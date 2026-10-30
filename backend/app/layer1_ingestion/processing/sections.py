@@ -10,6 +10,8 @@ import unicodedata
 
 RULE_FILE = Path(__file__).resolve().parents[1] / "rules" / "german_sections.json"
 _GENERIC_HEADING = re.compile(r"^[^:;.!?]{3,75}:\s*$")
+# Dates inside a heading ("Schädel-CT (11.06.2015):") must not disqualify it.
+_DATE_IN_HEADING = re.compile(r"\b\d{1,2}\.\d{1,2}\.\d{2,4}\b")
 
 
 def _canonical(s: str) -> str:
@@ -60,7 +62,7 @@ def detect_sections(text: str, engine: str = "auto") -> tuple[dict[tuple[int, in
         if not trimmed:
             continue
         category = normalized.get(_canonical(trimmed))
-        if category is None and _GENERIC_HEADING.fullmatch(trimmed):
+        if category is None and _GENERIC_HEADING.fullmatch(_DATE_IN_HEADING.sub("D", trimmed)):
             category = "unclassified"
         if category is not None:
             lead = len(s) - len(s.lstrip())
@@ -76,17 +78,16 @@ def detect_sections(text: str, engine: str = "auto") -> tuple[dict[tuple[int, in
     # anchored deterministic matches remain the source of safe boundaries.
     doc = nlp(text)
     for sec in doc._.sections:
-        span = getattr(sec, "title_span", None)
-        if span is None:
-            span = getattr(sec, "title", None)
-        if not hasattr(span, "start_char"):
+        # medSpaCy >=1.0 exposes token offsets (title_start/title_end), not a Span.
+        if sec.title_start >= sec.title_end or not sec.category:
             continue
-        start, end = span.start_char, span.end_char
-        line_start = text.rfind("\n", 0, start) + 1
-        line_end = text.find("\n", end)
+        span = doc[sec.title_start:sec.title_end]
+        line_start = text.rfind("\n", 0, span.start_char) + 1
+        line_end = text.find("\n", span.end_char)
         line_end = len(text) if line_end == -1 else line_end
-        if text[line_start:line_end].strip().strip(": ").casefold() == text[start:end].strip().strip(": ").casefold():
-            category = getattr(sec, "category", None)
-            if category:
-                found[(start, end)] = str(category)
+        line = text[line_start:line_end]
+        if _canonical(line) != _canonical(span.text):
+            continue  # inline mention, not a whole-line heading
+        lead = len(line) - len(line.lstrip())
+        found[(line_start + lead, line_start + lead + len(line.strip()))] = str(sec.category)
     return found, "medspacy"

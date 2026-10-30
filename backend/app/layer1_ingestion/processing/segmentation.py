@@ -12,7 +12,14 @@ _MED_TIMING = re.compile(r"\b(?:\d(?:/\d+)?\s+){2,}\d(?:/\d+)?\b|\b\d+x\s*/\s*wo
 _TABLE_HEADER = re.compile(r"\bapplikation\b.*\bmo\b.*\bmi\b|\bparameter\b.*\b(?:einheit|referenzbereich)\b", re.I)
 _VALUE_ROW = re.compile(r"^[\wÄÖÜäöüß() /.-]{2,48}:\s*[-+]?\d[\d.,/]*\s*(?:mmHg|kg|cm|°C|%|mm|/min|mg|g|mmol/l|U/l)?\b", re.I)
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])")
-_ABBREV = re.compile(r"(?:\bDr|\bProf|\bPat|\bZ\.n|\bSt\.p|\bbzw|\bca|\bmax|\bmin|\bli|\bre|\bu\.a)\.$", re.I)
+# German clinical abbreviations that end with a period but do not end a sentence.
+_ABBREV = re.compile(
+    r"\b(?:Dr|Prof|Prim|Pat|Z\.n|St\.p|Vd\.a|V\.a|bzw|ca|max|min|li|re|dext|u\.a|z\.B|v\.a|o\.B|"
+    r"i\.v|s\.c|p\.o|Art|Diab|Mell|wg|ventr|Gem|Tabl|ggf|evtl|inkl|Nr|Std|kalk|systol|Abt|Hr|Fr)\.$"
+    r"|(?<![\w.])[A-ZÄÖÜ]\.$", re.I)
+_DAY_ORDINAL = re.compile(r"\b\d{1,2}\.$")
+_MONTH_START = re.compile(
+    r"(?:Jänner|Januar|Februar|Feber|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\b", re.I)
 
 
 @dataclass(frozen=True)
@@ -43,7 +50,9 @@ def _split_sentences(text: str, start: int, end: int) -> list[tuple[int, int]]:
     part = text[start:end]
     cut_points = [0]
     for m in _SENTENCE_BREAK.finditer(part):
-        if not _ABBREV.search(part[:m.start()]):
+        before = part[:m.start()]
+        if not _ABBREV.search(before) and not (
+                _DAY_ORDINAL.search(before) and _MONTH_START.match(part, m.end())):
             cut_points.append(m.end())
     cut_points.append(len(part))
     result = []
