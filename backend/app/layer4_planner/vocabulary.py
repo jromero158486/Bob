@@ -7,7 +7,7 @@ from __future__ import annotations
 
 CONCEPTS: list[dict] = [
     {"id": "antithrombotics", "title": "Antithrombotic medication",
-     "triggers": [r"antithrombo", r"blood[- ]?thinner", r"anticoagul", r"antiplatelet", r"platelet", r"gerinnung",
+     "triggers": [r"antithrombo", r"blood[- ]?thinner", r"anticoagul", r"antikoagul", r"antiplatelet", r"platelet", r"gerinnung",
                   r"blutverdünn", r"thrombozytenaggregation", r"bleeding risk"],
      "steps": [{"operation": "list_medications", "filters": {"code_prefixes": ["B01"]}, "temporal": {"mode": "current"}}]},
     {"id": "glucose_lowering", "title": "Glucose-lowering medication",
@@ -42,7 +42,7 @@ CONCEPTS: list[dict] = [
                 "filters": {"observation_names": ["creatinine", "egfr"]}, "temporal": {"mode": "latest"}}]},
     {"id": "cardiac_function", "title": "Cardiac function",
      "triggers": [r"ejection fraction", r"\blvef\b", r"\bef\b", r"heart function", r"cardiac function", r"echocardio",
-                  r"herzfunktion", r"pumpfunktion", r"\becho\b", r"cardiac"],
+                  r"herzfunktion", r"pumpfunktion", r"\becho\b", r"cardiac", r"herzbefund", r"kardial"],
      "steps": [{"operation": "get_observations", "filters": {"observation_names": ["lvef", "tapse"]}, "temporal": {"mode": "series"}},
                {"operation": "list_procedures", "title": "Cardiac examinations",
                 "filters": {"procedure_names": ["Echocardiography", "ECG", "Holter ECG"]}, "required": False}]},
@@ -132,7 +132,7 @@ CONCEPTS: list[dict] = [
 # Allowed by the track rules ("you may hard-code which kinds of facts a role or task needs");
 # used only by the fallback planner and only to fill an otherwise empty plan.
 ROLE_DEFAULTS: list[tuple[str, list[str]]] = [
-    (r"an(?:a|ae|e)sthe", ["demographics", "antithrombotics", "allergies", "cardiac_function", "weight", "diagnoses"]),
+    (r"an(?:a|ae|e|ä)sthe", ["demographics", "antithrombotics", "allergies", "cardiac_function", "weight", "diagnoses"]),
     (r"surgeon|chirurg", ["tumour_histology", "receptors", "plan", "antithrombotics", "allergies"]),
     (r"oncolog|onkolog", ["tumour_histology", "receptors", "plan", "medications"]),
     (r"pharmac|apothek", ["medications", "medication_changes", "allergies"]),
