@@ -170,6 +170,23 @@ def _codes_ok(f: ClinicalFact, prefixes: list[str]) -> bool:
 
 SIGN_OFF = re.compile(r"\b(befundet|vidiert|diktiert|geschrieben|gezeichnet|gez\.|unterschrieben)\s*:?\s*"
                       r"((dr|prof|oa|oä|ass|dipl)\.?\s*)*[\wÄÖÜäöüß.\-]*", re.I)
+RANKINGS = ("lexical", "dense", "sparse", "colbert")
+DEFAULT_FUSION = "equal"
+
+
+def parse_fusion_weights(spec: str) -> dict[str, float]:
+    """'equal' or 'dense=1,sparse=0.3,colbert=0.5,lexical=0' (unlisted rankings get weight 0)."""
+    if spec.strip().lower() == "equal":
+        return dict.fromkeys(RANKINGS, 1.0)
+    out = dict.fromkeys(RANKINGS, 0.0)
+    for part in filter(None, (x.strip() for x in spec.split(","))):
+        name, _, w = part.partition("=")
+        if name.strip() not in out:
+            raise ValueError(f"unknown ranking {name!r} in HYBRID_WEIGHTS; expected {RANKINGS}")
+        out[name.strip()] = float(w)
+    return out
+
+
 RETRIEVAL_MODES = ("auto", "lexical", "dense", "hybrid", "hybrid_rerank")
 
 
@@ -181,6 +198,10 @@ class Executor:
         self.retrieval = (retrieval or os.environ.get("RETRIEVAL_MODE", "auto")).lower()
         if self.retrieval not in RETRIEVAL_MODES:
             raise ValueError(f"unknown retrieval mode {self.retrieval!r}; expected one of {RETRIEVAL_MODES}")
+        # Weighted reciprocal rank fusion for the hybrid modes (weight 0 drops a ranking). Weights are tuned on
+        # validation queries only (docs/research/EXPERIMENTS.md); "equal" reproduces plain RRF.
+        self.fusion_weights = parse_fusion_weights(os.environ.get("HYBRID_WEIGHTS", DEFAULT_FUSION))
+        self.rrf_k = int(os.environ.get("RRF_K", "60"))
         self.retrieval_used: set[str] = set()
         self.retrieval_warnings: list[str] = []
         self.syn = Synthesizer(store, patient_id)
@@ -465,9 +486,10 @@ class Executor:
             fused = rankings["dense"]
         else:
             rrf: dict[str, float] = {}
-            for ranking in rankings.values():
-                for rank, pid in enumerate(ranking):
-                    rrf[pid] = rrf.get(pid, 0) + 1 / (60 + rank)
+            for name, ranking in rankings.items():
+                w = self.fusion_weights.get(name, 0.0)
+                for rank, pid in enumerate(ranking if w else []):
+                    rrf[pid] = rrf.get(pid, 0) + w / (self.rrf_k + rank)
             fused = sorted(rrf, key=lambda i: -rrf[i])
         if used == "hybrid_rerank" and fused:
             from backend.app.layer5_retrieval.embeddings import shared_reranker
