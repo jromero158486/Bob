@@ -8,7 +8,7 @@ from __future__ import annotations
 CONCEPTS: list[dict] = [
     {"id": "antithrombotics", "title": "Antithrombotic medication",
      "triggers": [r"antithrombo", r"blood[- ]?thinner", r"anticoagul", r"antikoagul", r"antiplatelet", r"platelet", r"gerinnung",
-                  r"blutverdünn", r"thrombozytenaggregation", r"bleeding risk"],
+                  r"blutverdünn", r"thrombozytenaggregation", r"bleeding risk", r"aspirin", r"\bass\b", r"acetylsalicyl"],
      "steps": [{"operation": "list_medications", "filters": {"code_prefixes": ["B01"]}, "temporal": {"mode": "current"}}]},
     {"id": "glucose_lowering", "title": "Glucose-lowering medication",
      "triggers": [r"glucose[- ]lowering", r"antidiabet", r"diabetes (?:drug|medication|medicine|treatment)",
@@ -32,7 +32,7 @@ CONCEPTS: list[dict] = [
      "steps": [{"operation": "list_medications", "temporal": {"mode": "current"}}]},
     {"id": "medication_changes", "title": "Medication changes across admissions",
      "triggers": [r"compar\w* (?:the )?medication", r"medication\w* (?:change|across|between|over)", r"across admissions",
-                  r"reconcil", r"medikationsänderung", r"changes? (?:in|of) (?:her |his |the )?medication"],
+                  r"reconcil", r"medikationsänderung", r"changes? (?:in|of) (?:her |his |the )?medication", r"changes? over time", r"veränderung"],
      "steps": [{"operation": "compare_medication_lists", "temporal": {"mode": "change"}}]},
     {"id": "allergies", "title": "Allergies and intolerances",
      "triggers": [r"allerg", r"intoleran", r"unverträglich", r"\bcave\b", r"contrast", r"kontrastmittel", r"anaphyla", r"\bkm\b"],
@@ -55,7 +55,8 @@ CONCEPTS: list[dict] = [
                   r"glycemic control", r"diabetes review"],
      "steps": [{"operation": "get_observations", "filters": {"observation_names": ["hba1c"]}, "temporal": {"mode": "latest"}}]},
     {"id": "weight", "title": "Body weight and BMI",
-     "triggers": [r"\bweight", r"gewicht", r"\bbmi\b", r"body mass", r"obes", r"lost .*kg", r"diabetes"],
+     "triggers": [r"\bweight", r"gewicht", r"\bbmi\b", r"body mass", r"obes", r"lost .*kg", r"diabetes", r"nutrition",
+                  r"ernährung", r"\bdiet"],
      "steps": [{"operation": "get_observations", "filters": {"observation_names": ["body_weight", "bmi", "body_height"]},
                 "temporal": {"mode": "series"}}]},
     {"id": "blood_pressure", "title": "Blood pressure",
@@ -110,7 +111,10 @@ CONCEPTS: list[dict] = [
      "triggers": [r"happened before", r"\bbefore\b.*\?", r"previous", r"prior (?:episode|event)", r"\bagain\b", r"history of",
                   r"recurren", r"dizz", r"vertigo", r"vision", r"visual", r"\beye\b", r"schwindel", r"seh",
                   r"amaurosis", r"\btia\b", r"transient", r"monocular", r"episod"],
-     "steps": [{"operation": "list_diagnoses", "title": "Documented diagnoses related to the presentation"},
+     "steps": [{"operation": "search_text", "title": "Documented diagnosis or cause for these symptoms (quoted)",
+                "filters": {"require_terms": ["diagnose:", "aufgrund", "zurückzuführen", "infolge", "verursacht",
+                                              "diagnosis:", "due to", "caused by"]}, "required": False},
+               {"operation": "list_diagnoses", "title": "Documented diagnoses related to the presentation"},
                {"operation": "search_text", "title": "Passages describing similar symptoms", "required": False}]},
     {"id": "diagnoses", "title": "Diagnoses",
      "triggers": [r"diagnos", r"problem list", r"conditions?", r"comorbid", r"vorerkrank", r"summar", r"overview", r"überblick", r"zusammenfass",
@@ -146,10 +150,13 @@ ROLE_DEFAULTS: list[tuple[str, list[str]]] = [
     (r"surgeon|chirurg", ["tumour_histology", "receptors", "plan", "antithrombotics", "allergies"]),
     (r"oncolog|onkolog", ["tumour_histology", "receptors", "plan", "medications"]),
     (r"pharmac|apothek", ["medications", "medication_changes", "allergies"]),
-    (r"emergency|notfall|\bed\b|night duty", ["allergies", "medications", "diagnoses", "prior_episodes"]),
+    (r"emergency|notfall|\bed\b|night duty", ["allergies", "contrast_safety", "medications", "diagnoses",
+                                                  "prior_episodes"]),
     (r"general practitioner|\bgp\b|hausarzt|family doctor|primary care", ["diagnoses", "medications", "followups"]),
     (r"cardiolog|kardiolog", ["cardiac_function", "blood_pressure", "antithrombotics", "antihypertensives", "carotid"]),
     (r"nurse|pflege", ["allergies", "medications", "vitals"]),
+    (r"dietitian|dietician|diätolog|ernährungsberat", ["weight", "hba1c", "glucose_lowering", "diagnoses", "allergies"]),
+    (r"physiother", ["diagnoses", "weight", "cardiac_function", "antithrombotics"]),
 ]
 GENERIC_DEFAULT = ["diagnoses", "medications", "allergies", "plan"]
 
@@ -162,6 +169,7 @@ GLOSSARY = {
     "contrast": ["Kontrastmittel", "KM"], "stroke": ["Insult", "Schlaganfall"], "bleeding": ["Blutung"],
     "follow-up": ["Kontrolle", "Kontrollen"], "ultrasound": ["Sonographie", "Duplexsonographie"],
     "kidney": ["Niere", "Kreatinin"], "nausea": ["Übelkeit"], "vomiting": ["Erbrechen"],
+    "pericardial": ["Perikard", "Perikarderguss"], "effusion": ["Erguss"], "pleural": ["Pleura", "Pleuraerguss"],
 }
 
 # German display titles for plan sections (requests detected as German get German headings).
@@ -183,7 +191,24 @@ TITLE_DE = {
     "Carotid arteries": "Halsschlagadern (Karotiden)", "Carotid imaging": "Karotis-Bildgebung",
     "Previous similar episodes": "Frühere ähnliche Episoden",
     "Documented diagnoses related to the presentation": "Dokumentierte Diagnosen zum Beschwerdebild",
-    "Passages describing similar symptoms": "Textstellen mit ähnlichen Symptomen", "Diagnoses": "Diagnosen",
+    "Passages describing similar symptoms": "Textstellen mit ähnlichen Symptomen",
+    "Documented diagnosis or cause for these symptoms (quoted)": "Dokumentierte Diagnose oder Ursache dieser Symptome (Zitat)", "Diagnoses": "Diagnosen",
     "Patient": "Patientin/Patient", "Laboratory values": "Laborwerte", "Procedures and examinations": "Eingriffe und Untersuchungen",
     "Encounters": "Aufenthalte", "Other relevant passages": "Weitere relevante Textstellen",
+}
+
+# Laboratory analytes and findings without a structured extractor: requested by name, they are searched verbatim
+# and reported as "not documented" when absent (never estimated).
+NAMED_LABS = {
+    "potassium": ("Potassium", ["kalium"]), "kalium": ("Potassium", ["kalium"]),
+    "sodium": ("Sodium", ["natrium"]), "natrium": ("Sodium", ["natrium"]),
+    "haemoglobin": ("Haemoglobin", ["hämoglobin", "hb "]), "hemoglobin": ("Haemoglobin", ["hämoglobin", "hb "]),
+    "hämoglobin": ("Haemoglobin", ["hämoglobin", "hb "]), "crp": ("CRP", ["crp"]), "tsh": ("TSH", ["tsh"]),
+    "inr": ("INR", ["inr"]), "troponin": ("Troponin", ["troponin"]), "ldl": ("LDL cholesterol", ["ldl"]),
+    "platelets": ("Platelets", ["thrombozyten"]), "thrombozyten": ("Platelets", ["thrombozyten"]),
+    "leukocytes": ("Leukocytes", ["leukozyten"]), "leukozyten": ("Leukocytes", ["leukozyten"]),
+    # named findings: shown verbatim (incl. documented negatives such as "Kein Perikarderguß") or reported missing
+    "pericardial": ("Pericardial findings", ["perikard"]), "perikarderguss": ("Pericardial findings", ["perikard"]),
+    "pleural": ("Pleural findings", ["pleura"]), "pleuraerguss": ("Pleural findings", ["pleura"]),
+    "ascites": ("Ascites", ["aszites"]), "aszites": ("Ascites", ["aszites"]),
 }

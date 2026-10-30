@@ -14,8 +14,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.app.api.schemas import Citation, Claim, VerifyTextRequest, VerifyTextResponse
-from backend.app.api.service import UnknownPatient, patient_conflicts, run_task, verify_text
+from backend.app.api.service import NOTICES, UnknownPatient, patient_conflicts, run_task, verify_text
 from backend.app.layer3_store.repository import ClinicalStore
+from backend.app.layer4_planner.vocabulary import TITLE_DE
 from backend.app.layer5_retrieval.engine import Synthesizer, build_timeline
 from backend.app.layer6_verification.verify import ClaimVerifier
 
@@ -30,7 +31,7 @@ class TaskIn(BaseModel):
     patientId: str
     task: str = Field(min_length=3, max_length=2000)
     role: str | None = Field(None, max_length=300)
-    locale: str = "de"
+    locale: str | None = Field(None, description="Response language: en or de; default = language of the request")
     referenceDate: str | None = None
 
 
@@ -49,9 +50,22 @@ class VerifyIn(BaseModel):
 
 
 
-_UI_DE = {"Summary": "Zusammenfassung", "Not documented": "Nicht dokumentiert",
+_UI_DE = {"Summary": "Zusammenfassung", "Not documented": "Nicht dokumentiert", "Request not answered": "Anfrage nicht beantwortet",
           "Potential conflicts in the record": "Mögliche Widersprüche in der Dokumentation",
           "Needs clinician review": "Ärztliche Prüfung erforderlich", "Timeline": "Zeitverlauf"}
+
+
+_TITLE_EN = {v: k for k, v in TITLE_DE.items()}
+
+
+def _title_de(t: str) -> str:
+    m = re.fullmatch(r"(\w+) allergy", t)
+    return f"{m.group(1)}-Allergie" if m else TITLE_DE.get(t, t)
+
+
+def _title_en(t: str) -> str:
+    m = re.fullmatch(r"(\w+)-Allergie", t)
+    return f"{m.group(1)} allergy" if m else _TITLE_EN.get(t, t)
 
 
 def _missing_de(msg: str) -> str:
@@ -231,27 +245,33 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
         facts: dict[str, dict] = {}
         blocks: list[dict] = []
         summary = []
-        de = r.plan.presentation.language == "de"
+        lang = (req.locale or "")[:2].lower()
+        de = (lang if lang in ("en", "de") else r.plan.presentation.language) == "de"
         ui = (lambda t: _UI_DE.get(t, t)) if de else (lambda t: t)
+        loc = _title_de if de else _title_en
         for n, s in enumerate(r.sections):
             for c in s.claims:
                 facts[c.claim_id] = _fact_from_claim(c, docs, s.concept)
             if s.claims and len(summary) < 5 and s.outcome != "not_documented":
-                latest = max(s.claims, key=lambda c: (c.date or (c.citations[0].document_date if c.citations else "") or ""))
-                summary.append({"text": f"{s.title}: {latest.text}", "factIds": [latest.claim_id]})  # most recent
+                latest = s.claims[0] if s.claims[0].kind == "passage" else \
+                    max(s.claims, key=lambda c: (c.date or (c.citations[0].document_date if c.citations else "") or ""))
+                summary.append({"text": f"{loc(s.title)}: {latest.text}", "factIds": [latest.claim_id]})  # best passage / most recent
             if not s.claims:  # reported in the missing-information block instead
                 continue
-            blocks.append({"id": s.section_id, "kind": "fact_list", "title": s.title,
+            blocks.append({"id": s.section_id, "kind": "fact_list", "title": loc(s.title),
                            "priority": "high" if n < 3 else "normal", "taskRelevance": "relevant",
                            "factIds": [c.claim_id for c in s.claims]})
+        notes = [{"text": NOTICES[n]["de" if de else "en"], "factIds": []} for n in r.notices if n in NOTICES]
+        summary = notes + summary
         if summary:
-            blocks.insert(0, {"id": "summary", "kind": "summary", "title": ui("Summary"), "priority": "high",
+            blocks.insert(0, {"id": "summary", "kind": "summary",
+                              "title": ui("Request not answered" if r.scope == "out_of_scope" else "Summary"), "priority": "high",
                               "taskRelevance": "relevant", "sentences": summary})
         if r.missing:
             cur = store.documents(req.patientId)
             blocks.append({"id": "missing", "kind": "missing_information", "title": ui("Not documented"), "priority": "high",
                            "taskRelevance": "relevant", "items": [
-                               {"id": m.step_id, "label": m.title, "detail": _missing_de(m.message) if de else m.message,
+                               {"id": m.step_id, "label": loc(m.title), "detail": _missing_de(m.message) if de else m.message,
                                 "searchedDocumentTypes": sorted({d.document_type or "Dokument" for d in cur}),
                                 "searchedDocuments": [{"id": d.document_id, "title": d.title} for d in cur
                                                       if (d.document_date or "") <= r.as_of],
@@ -285,7 +305,8 @@ def register_frontend_api(app: FastAPI, store: ClinicalStore, llm=None) -> None:
                            "events": [{"id": f"t{i}", "date": e.date, "dateKind": "document" if e.kind == "document" else "event",
                                        "label": e.label, "category": e.kind} for i, e in enumerate(r.timeline)]})
         p = r.provenance
-        intent = (f"{'; '.join(s.title for s in r.plan.steps)} — planner: {p.planner}"
+        intent = (("out of scope: no patient data shown" if r.scope == "out_of_scope" else
+                   '; '.join(loc(s.title) for s in r.plan.steps)) + f" — planner: {p.planner}"
                   f"{' (' + p.planner_model + ')' if p.planner_model else ''}; retrieval: {', '.join(p.retrieval_used) or 'structured only'}"
                   f"{'; ' + '; '.join(p.retrieval_warnings) if p.retrieval_warnings else ''}; as of {r.as_of}; "
                   f"{r.timings_ms.get('total', 0) / 1000:.1f} s")

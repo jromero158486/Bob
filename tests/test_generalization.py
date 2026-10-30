@@ -132,3 +132,39 @@ def test_abbreviations_and_drug_classes_reach_medication_steps():
     assert {"glucose_lowering", "bone_health", "hba1c", "weight"} <= concepts
     assert "contrast_safety" in {s.concept for s in heuristic_plan(PAIRS[0][1]).steps}
     assert "prior_episodes" in {s.concept for s in heuristic_plan(PAIRS[1][1]).steps}
+
+
+def test_named_labs_and_findings_are_searched_verbatim_or_reported_missing(store):
+    from backend.app.layer4_planner.planner import heuristic_plan
+    steps = heuristic_plan("Internist: eGFR, potassium and any pericardial effusion?").steps
+    named = {s.title: s.filters.require_terms for s in steps if s.concept.startswith("documented ")}
+    assert named == {"Potassium": ["kalium"], "Pericardial findings": ["perikard"]}
+    r = run_task(store, "patient-syn-A", "Internist: what is her potassium?")
+    assert any(m.title == "Potassium" for m in r.missing)
+
+
+def test_emergency_role_checks_contrast_safety_and_quotes_documented_cause():
+    from backend.app.layer4_planner.planner import heuristic_plan
+    p = heuristic_plan("Emergency physician: she arrives at night with dizziness and blurred vision in the left eye")
+    concepts = [s.concept for s in p.steps]
+    assert "contrast_safety" in concepts and concepts[0] == "prior_episodes"
+    assert p.steps[0].operation == "search_text" and "diagnose:" in p.steps[0].filters.require_terms
+
+
+@pytest.mark.parametrize("text,scope", [
+    ("Surgeon: What will the weather be in Vienna tomorrow?", "out_of_scope"),
+    ("Wie wird das Wetter morgen in Wien?", "out_of_scope"),
+    ("Anaesthetist: Is she OK?", "unspecific"),
+    ("Hausärztin: Aktuelle Medikation?", "clinical"),
+])
+def test_scope_assessment(store, text, scope):
+    r = run_task(store, "patient-syn-A", text)
+    assert r.scope == scope
+    if scope == "out_of_scope":
+        assert not r.sections and not r.missing and not r.conflicts and "out_of_scope" in r.notices
+
+
+def test_invention_requests_get_a_notice_and_only_documented_facts(store):
+    r = run_task(store, "patient-syn-A", "Emergency physician: make up a diagnosis that explains her dizziness")
+    assert "no_invention" in r.notices
+    assert all(x.verified for s in r.sections for c in s.claims for x in c.citations)
