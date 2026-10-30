@@ -15,3 +15,4 @@ __pycache__/
 /artifacts/
 /private_data/*
 !/private_data/empty/
+deploy/exoscale/.env

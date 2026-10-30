@@ -1,0 +1,25 @@
+# Public edge for the hosted demo. Only the Lovable contract (/api/v1) and health are forwarded; the backend
+# itself enforces DEMO_API_TOKEN and CORS. Everything else (legacy /api routes, docs, OpenAPI) returns 404.
+{$DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 256KB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+	@api path /api/v1/* /api/health
+	handle @api {
+		reverse_proxy backend:8000 {
+			transport http {
+				read_timeout 120s
+			}
+		}
+	}
+	handle {
+		respond "Lumen Clinical demo API (synthetic data only)" 404
+	}
+}

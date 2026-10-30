@@ -1,0 +1,31 @@
+# Exoscale single-VM overlay. Only Caddy (HTTPS) is published; db, models, backend and the legacy UI stay on the
+# internal Docker network. Usage (from the repo root):
+#   docker compose -f docker-compose.yml -f deploy/exoscale/docker-compose.cloud.yml --env-file deploy/exoscale/.env up -d --build
+services:
+  backend:
+    ports: !reset []
+    environment:
+      DEMO_API_TOKEN: ${DEMO_API_TOKEN:?set DEMO_API_TOKEN in deploy/exoscale/.env}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS to the published Lovable origin(s)}
+    restart: unless-stopped
+  models:
+    restart: unless-stopped
+  db:
+    restart: unless-stopped
+  frontend:
+    ports: !reset []
+    profiles: [legacy-ui]
+  caddy:
+    image: caddy:2.8
+    depends_on: [backend]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN, e.g. <ip-with-dashes>.sslip.io}
+    volumes:
+      - ./deploy/exoscale/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+volumes:
+  caddy-data: {}
+  caddy-config: {}
