@@ -58,6 +58,7 @@ class OpenAICompatibleProvider:
     def __init__(self, api_key: str, model: str, base_url: str = "https://api.openai.com/v1", timeout: int = 60):
         self._key, self.model, self.base_url, self.timeout = api_key, model, base_url.rstrip("/"), timeout
         self.reasoning_effort = os.environ.get("OPENAI_REASONING_EFFORT") or None
+        self.retries = 4
 
     def complete_json(self, system, user, schema, schema_name):
         out = _post(f"{self.base_url}/chat/completions", {
@@ -66,7 +67,7 @@ class OpenAICompatibleProvider:
             "response_format": {"type": "json_schema", "json_schema": {"name": schema_name, "schema": schema, "strict": False}},
             # e.g. "low" for gpt-oss on Groq: shorter hidden reasoning, lower latency; unset = provider default
             **({"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}),
-        }, {"Authorization": f"Bearer {self._key}"}, self.timeout)
+        }, {"Authorization": f"Bearer {self._key}"}, self.timeout, self.retries)
         content = out["choices"][0]["message"]["content"]
         return LLMResponse(json.loads(content), self.name, out.get("model", self.model))
 
