@@ -71,14 +71,16 @@ class Synthesizer:
             out.append(Citation(document_id=e.document_id, document_title=d.title if d else "?",
                                 document_date=d.document_date if d else None, passage_id=e.passage_id,
                                 quote=e.display_text, passage_text=p.display_text if p else e.display_text,
-                                original_start=e.original_start, original_end=e.original_end))
+                                original_start=e.original_start, original_end=e.original_end,
+                                source_id=e.source_id, source_sha256=e.source_sha256))
         return sorted(out, key=lambda c: (c.document_date or "", c.document_id), reverse=True)
 
     def passage_citation(self, p) -> Citation:
         d = self.docs.get(p.source_id)
         return Citation(document_id=d.document_id if d else "?", document_title=d.title if d else "?",
                         document_date=d.document_date if d else None, passage_id=p.passage_id, quote=p.display_text,
-                        passage_text=p.display_text, original_start=p.original_start, original_end=p.original_end)
+                        passage_text=p.display_text, original_start=p.original_start, original_end=p.original_end,
+                        source_id=p.source_id, source_sha256=d.source_sha256 if d else "")
 
     # ----- rendering -----
     def med_claim(self, group: list[ClinicalFact], step: PlanStep) -> Claim:

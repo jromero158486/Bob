@@ -161,6 +161,16 @@ class ClinicalStore:
                 return None
             return d, list(d.passages)
 
+    def source_version(self, source_id: str) -> Document | None:
+        """Unscoped lookup by exact source version. Only for integrity checks; callers must compare patient_id."""
+        with self.Session() as s:
+            return s.get(Document, source_id)
+
+    def passage_by_id(self, passage_id: str) -> Passage | None:
+        """Unscoped lookup for integrity checks; callers must compare patient_id/source_id."""
+        with self.Session() as s:
+            return s.get(Passage, passage_id)
+
     def passages(self, patient_id: str, passage_ids: Iterable[str]) -> dict[str, Passage]:
         ids = list(set(passage_ids))
         if not ids:

@@ -21,7 +21,11 @@ class Citation(BaseModel):
     passage_text: str = Field(description="The full sentence/table row that contains the span")
     original_start: int
     original_end: int
-    verified: bool = False
+    source_id: str = Field("", description="Exact document version (source) the offsets refer to")
+    source_sha256: str = Field("", description="SHA-256 of the original source text of that version")
+    verified: bool = Field(False, description="Citation integrity only: offsets, passage, quote, checksum, patient, "
+                                              "current version. Says nothing about whether the claim is correct.")
+    integrity_errors: list[str] = []
 
 
 class Claim(BaseModel):
@@ -38,6 +42,10 @@ class Claim(BaseModel):
     conflict_ids: list[str] = []
     review_status: str | None = None
     notes: list[str] = []
+    citation_integrity: Literal["valid", "invalid", "none"] = "none"
+    support_basis: Literal["source_values_matched", "verbatim_passage", "derived_from_verified_inputs",
+                           "documented_negative", "absence_in_record", "none"] = "none"
+    support_checks: list[str] = Field([], description="name:pass|fail for each semantic support check")
 
 
 class Section(BaseModel):
@@ -78,6 +86,8 @@ class VerificationSummary(BaseModel):
     supported: int = 0
     contradicted: int = 0
     not_addressed: int = 0
+    citations_total: int = 0
+    citations_valid: int = 0
     verification_incomplete: int = 0
     checks: list[str] = []
 
