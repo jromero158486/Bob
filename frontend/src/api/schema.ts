@@ -1,5 +1,18 @@
 // AUTO-GENERATED from docs/openapi.json by backend/app/tools/gen_ts_types.py. Do not edit.
 
+export type AtomicClaimOut = {
+  text: string;
+  start?: number | null;
+  end?: number | null;
+  verdict: "supported" | "contradicted" | "not_addressed";
+  needs_review: boolean;
+  review_reason: string;
+  clinically_verified?: false;
+  deterministic?: Record<string, unknown>;
+  semantic?: Record<string, unknown>;
+  evidence?: EvidenceOut[];
+};
+
 export type Citation = {
   document_id: string;
   document_title: string;
@@ -54,6 +67,13 @@ export type DocumentOut = {
   source_sha256: string;
   normalized_text?: string | null;
   passages?: PassageOut[];
+};
+
+export type EvidenceOut = {
+  citation: Citation;
+  entailment?: number | null;
+  contradiction?: number | null;
+  checks?: Record<string, unknown>;
 };
 
 export type HTTPValidationError = {
@@ -210,4 +230,28 @@ export type VerificationSummary = {
   citations_valid?: number;
   verification_incomplete?: number;
   checks?: string[];
+};
+
+export type VerifyTextRequest = {
+  patient_id: string;
+  text: string;
+  as_of?: string | null;
+  judge?: "nli" | "groq" | "none";
+  atomizer?: "rules" | "llm";
+  retrieval_mode?: "auto" | "lexical" | "dense" | "hybrid" | "hybrid_rerank" | null;
+};
+
+export type VerifyTextResponse = {
+  patient_id: string;
+  as_of: string;
+  judge_requested: "nli" | "groq" | "none";
+  judge_used: "nli" | "groq" | "none";
+  judge_model?: string | null;
+  atomizer: string;
+  retrieval_used?: string[];
+  warnings?: string[];
+  summary?: Record<string, number>;
+  claims?: AtomicClaimOut[];
+  timings_ms?: Record<string, number>;
+  disclaimer?: string;
 };

@@ -262,6 +262,44 @@
     }
    }
   },
+  "/api/verify": {
+   "post": {
+    "summary": "Verify",
+    "operationId": "verify_api_verify_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VerifyTextRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VerifyTextResponse"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/patients/{pid}/review": {
    "get": {
     "summary": "Review List",
@@ -347,6 +385,89 @@
  },
  "components": {
   "schemas": {
+   "AtomicClaimOut": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start",
+      "description": "Offset in the submitted text (rule atomizer only)"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "verdict": {
+      "type": "string",
+      "enum": [
+       "supported",
+       "contradicted",
+       "not_addressed"
+      ],
+      "title": "Verdict"
+     },
+     "needs_review": {
+      "type": "boolean",
+      "title": "Needs Review"
+     },
+     "review_reason": {
+      "type": "string",
+      "title": "Review Reason"
+     },
+     "clinically_verified": {
+      "type": "boolean",
+      "const": false,
+      "title": "Clinically Verified",
+      "description": "Always false: support by cited record text is not clinical verification",
+      "default": false
+     },
+     "deterministic": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Deterministic",
+      "default": {}
+     },
+     "semantic": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Semantic",
+      "default": {}
+     },
+     "evidence": {
+      "items": {
+       "$ref": "#/components/schemas/EvidenceOut"
+      },
+      "type": "array",
+      "title": "Evidence",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "text",
+     "verdict",
+     "needs_review",
+     "review_reason"
+    ],
+    "title": "AtomicClaimOut"
+   },
    "Citation": {
     "properties": {
      "document_id": {
@@ -721,6 +842,46 @@
      "source_sha256"
     ],
     "title": "DocumentOut"
+   },
+   "EvidenceOut": {
+    "properties": {
+     "citation": {
+      "$ref": "#/components/schemas/Citation"
+     },
+     "entailment": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Entailment"
+     },
+     "contradiction": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Contradiction"
+     },
+     "checks": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Checks",
+      "default": {}
+     }
+    },
+    "type": "object",
+    "required": [
+     "citation"
+    ],
+    "title": "EvidenceOut"
    },
    "HTTPValidationError": {
     "properties": {
@@ -1595,6 +1756,176 @@
     },
     "type": "object",
     "title": "VerificationSummary"
+   },
+   "VerifyTextRequest": {
+    "properties": {
+     "patient_id": {
+      "type": "string",
+      "title": "Patient Id"
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 5000,
+      "minLength": 3,
+      "title": "Text",
+      "description": "Free text (e.g. a draft summary) to check"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "As Of",
+      "description": "ISO date; evidence after it is ignored. Default: latest document"
+     },
+     "judge": {
+      "type": "string",
+      "enum": [
+       "nli",
+       "groq",
+       "none"
+      ],
+      "title": "Judge",
+      "description": "nli (multilingual NLI), groq (LLM judge), none (deterministic)",
+      "default": "nli"
+     },
+     "atomizer": {
+      "type": "string",
+      "enum": [
+       "rules",
+       "llm"
+      ],
+      "title": "Atomizer",
+      "default": "rules"
+     },
+     "retrieval_mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "auto",
+         "lexical",
+         "dense",
+         "hybrid",
+         "hybrid_rerank"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retrieval Mode"
+     }
+    },
+    "type": "object",
+    "required": [
+     "patient_id",
+     "text"
+    ],
+    "title": "VerifyTextRequest"
+   },
+   "VerifyTextResponse": {
+    "properties": {
+     "patient_id": {
+      "type": "string",
+      "title": "Patient Id"
+     },
+     "as_of": {
+      "type": "string",
+      "title": "As Of"
+     },
+     "judge_requested": {
+      "type": "string",
+      "enum": [
+       "nli",
+       "groq",
+       "none"
+      ],
+      "title": "Judge Requested"
+     },
+     "judge_used": {
+      "type": "string",
+      "enum": [
+       "nli",
+       "groq",
+       "none"
+      ],
+      "title": "Judge Used"
+     },
+     "judge_model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Judge Model"
+     },
+     "atomizer": {
+      "type": "string",
+      "title": "Atomizer"
+     },
+     "retrieval_used": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Retrieval Used",
+      "default": []
+     },
+     "warnings": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Warnings",
+      "default": []
+     },
+     "summary": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Summary",
+      "default": {}
+     },
+     "claims": {
+      "items": {
+       "$ref": "#/components/schemas/AtomicClaimOut"
+      },
+      "type": "array",
+      "title": "Claims",
+      "default": []
+     },
+     "timings_ms": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Timings Ms",
+      "default": {}
+     },
+     "disclaimer": {
+      "type": "string",
+      "title": "Disclaimer",
+      "default": "Research prototype on synthetic data. 'supported' means the claim is entailed by cited record text and passes value/date/negation checks; it is not clinical verification."
+     }
+    },
+    "type": "object",
+    "required": [
+     "patient_id",
+     "as_of",
+     "judge_requested",
+     "judge_used",
+     "atomizer"
+    ],
+    "title": "VerifyTextResponse"
    }
   }
  }
