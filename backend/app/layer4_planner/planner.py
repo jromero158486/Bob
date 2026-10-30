@@ -19,7 +19,7 @@ from pydantic import ValidationError
 from backend.app.layer2_extraction.dates import find_dates
 from backend.app.layer4_planner.contracts import (ALLOWED_OPERATIONS, LLMPlanDraft, PlannerInfo, PlanStep, Presentation,
                                                   StepFilters, TaskPlan, TemporalConstraint, validate_plan)
-from backend.app.layer4_planner.vocabulary import CONCEPTS, GENERIC_DEFAULT, GLOSSARY, ROLE_DEFAULTS, TITLE_DE
+from backend.app.layer4_planner.vocabulary import CONCEPTS, GENERIC_DEFAULT, GLOSSARY, ROLE_DEFAULTS, NAMED_LABS, TITLE_DE
 
 _ROLE = re.compile(r"(?:I'?m|I am|you are|as)\s+(?:an?\s+|the\s+|her\s+|his\s+)?([A-Za-zÄÖÜäöü' -]{3,60}?)(?=[.,;:!?]| and | who | preparing| reviewing| planning| on | at |$)", re.I)
 _ROLE_DE = re.compile(r"\bich bin\s+(?:ein(?:e)?\s+)?([A-Za-zÄÖÜäöü -]{3,40}?)(?=[.,;:!?]|$)", re.I)
@@ -32,7 +32,8 @@ ist sind mit für von zu im den dem des eine einer ein bitte welche welcher""".s
 
 
 _DE_WORDS = set("""und oder der die das den dem des vor nach mit sowie bei zum zur von welche welcher ich bin ist sind
-nicht kein keine aktuelle aktuellen frühere früheren weiteres bitte gibt hat wurde wurden dokumentiert""".split())
+nicht kein keine aktuelle aktuellen frühere früheren weiteres bitte gibt hat wurde wurden dokumentiert
+wie was wann wer wo warum wird werden welches hatte haben ein eine einen einem sie er""".split())
 _DE_STEMS = re.compile(r"(?:verlauf|einstellung|abnahme|therapie|befunde?|abklärung|kontrolle|anamnese|untersuchung|"
                        r"medikation|procedere|patientin)$")
 
@@ -128,6 +129,13 @@ def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> 
         steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=f"{word}-Allergie" if lang == "de" else f"{word} allergy",
                               concept=f"documented {word} allergy",
                               filters=StepFilters(search_terms=[word, f"{word}allergie"], require_terms=[word[:6]])))
+    for key in dict.fromkeys(k for k in re.findall(r"[a-zäöüß]+", low.replace("ß", "ss")) if k in NAMED_LABS):
+        name, stems = NAMED_LABS[key]
+        if any(s.title == name for s in steps):
+            continue
+        steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=name,
+                              concept=f"documented {name}",
+                              filters=StepFilters(search_terms=[name, *stems], require_terms=stems)))
     for c in ordered:
         for i, st in enumerate(c["steps"]):
             filters = dict(st.get("filters", {}))
@@ -142,7 +150,7 @@ def heuristic_plan(request: str, detail: str = "no LLM provider configured") -> 
                                   filters=StepFilters(**filters), temporal=TemporalConstraint(**st.get("temporal", {})),
                                   required=st.get("required", True),
                                   rationale="matched in task text" if c in matched else f"default for role '{role}'"))
-    if terms and not any(s.operation == "search_text" for s in steps):
+    if terms and not any(s.operation == "search_text" and not s.filters.require_terms for s in steps):
         steps.append(PlanStep(step_id=f"s{len(steps) + 1}", operation="search_text", title=loc("Other relevant passages"),
                               concept="free_text", filters=StepFilters(search_terms=terms), required=False,
                               rationale="lexical search for task terms not covered by structured steps"))

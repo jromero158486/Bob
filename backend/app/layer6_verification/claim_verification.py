@@ -79,6 +79,7 @@ def _unit(u: str) -> str:
 
 
 def values(text: str) -> set[tuple[str, str]]:
+    text = re.sub(r"(\d)\s*%ig\w*", r"\1 %", text)  # "60%ige Stenose"
     return {(_num(n), _unit(u)) for n, u in _NUM_UNIT.findall(text)}
 
 
@@ -98,7 +99,8 @@ def negated(text: str) -> bool:
 # "LVEF" ~ "EF", "allergic" ~ "Allergie"), and drug brand/ingredient names collapsed to their ATC code via the lexicon.
 _ABBREV = [(re.compile(r"kontrastmittel|(?:iodinated )?contrast (?:media|medium|agents?)", re.I), " km "),
            (re.compile(r"ejektionsfraktion|ejection fraction|\blvef\b", re.I), " ef "),
-           (re.compile(r"\ballerg\w*", re.I), " allergie ")]
+           (re.compile(r"\ballerg\w*", re.I), " allergie "),
+           (re.compile(r"\b(?:carotid|karotis)\w*", re.I), " carotis "), (re.compile(r"\bsteno(?:sis|se)\b", re.I), " stenose ")]
 _SHORT_TERMS = {"km", "ef", "ass"}
 _UNITS = {"mg", "mcg", "ug", "ml", "kg", "cm", "mm", "mmhg", "ie", "iu"}
 _MED_ENTRIES = json.loads((Path(__file__).resolve().parents[1] / "layer2_extraction" / "resources" /
@@ -113,14 +115,27 @@ def _normalize(text: str) -> str:
     return text
 
 
-def gloss(text: str) -> str:
+_SCHEDULE = re.compile(r"(?<![\d.,/-])([0-4½](?:[- ][0-4½]){2,3})(?![\d.,/-])")
+_TIMES = {1: "once daily", 2: "twice daily", 3: "three times daily", 4: "four times daily"}
+
+
+def _schedule_gloss(m: re.Match) -> str:
+    """'1-0-0' -> '1-0-0 (once daily)': lets English schedule wording meet the German dosing notation."""
+    n = sum(p != "0" for p in re.split(r"[- ]", m.group(1)))
+    return f"{m.group(1)} ({_TIMES[n]})" if n in _TIMES else m.group(1)
+
+
+def gloss(text: str, claim: str = "") -> str:
     """Evidence text for the NLI judge with abbreviations spelled out and brand names glossed with their ingredient
     ("Glucophage 1000mg" -> "Glucophage (metformin) 1000mg"); citations keep the verbatim source text."""
-    text = re.sub(r"\bKM\b", "Kontrastmittel (KM)", text)
+    text = re.sub(r"\bKM\b", "Kontrastmittel/contrast media (KM)", text)
+    text = _SCHEDULE.sub(_schedule_gloss, text)
     for e in _MED_ENTRIES:
         if e.get("atc") and e["ingredient"].lower() not in text.lower():
             pat = re.compile(r"\b(" + "|".join(re.escape(n) for n in e["names"]) + r")\b", re.I)
-            text = pat.sub(lambda m: f"{m.group(1)} ({e['ingredient']})", text, count=1)
+            said = re.search(r"\b(?:" + "|".join(re.escape(n) for n in [e["ingredient"], *e["names"]]) + r")\b", claim, re.I)
+            name = said.group(0) if said and said.group(0).lower() not in text.lower() else e["ingredient"]
+            text = pat.sub(lambda m: f"{m.group(1)} ({name})", text, count=1)
     return text
 
 
@@ -137,7 +152,8 @@ def content_tokens(text: str) -> set[str]:
 
 def _shared(ct: set[str], et: set[str]) -> int:
     """Claim tokens matched in the evidence, allowing German compounds/inflections by prefix ("her2" ~ "her2neu")."""
-    return sum(any(e == t or (min(len(e), len(t)) >= 3 and (e.startswith(t) or t.startswith(e))) for e in et)
+    return sum(any(e == t or (min(len(e), len(t)) >= 3 and (e.startswith(t) or t.startswith(e)))
+                   or (len(t) >= 5 and e.endswith(t)) for e in et)  # compounds: "Abgangsstenose" ~ "stenose"
                for t in ct)
 
 
@@ -272,7 +288,7 @@ class ClaimVerificationPipeline:
         words = [w for w in content_tokens(claim) if len(w) >= 3 or w in _SHORT_TERMS] + drug_names(claim)
         if not words:
             return []
-        pat = re.compile(r"\b(?:" + "|".join(map(re.escape, words)) + r")\b", re.I)
+        pat = re.compile(r"\b(?:" + "|".join(re.escape(w) + (r"\b" if len(w) < 4 else "") for w in words) + r")", re.I)
         extra = [pid for pid in self.ex.last_rankings.get("lexical", [])
                  if pid not in top and pat.search(passages[pid].display_text)]
         return extra[:limit]
@@ -293,9 +309,10 @@ class ClaimVerificationPipeline:
     def verify_claim(self, claim: AtomicClaim) -> ClaimResult:
         r = ClaimResult(claim)
         cits = self.evidence(claim.text)
-        dets = [deterministic_check(claim.text, c.passage_text, c.document_date) for c in cits]
+        glossed = [gloss(c.passage_text, claim.text) for c in cits]
+        dets = [deterministic_check(claim.text, g, c.document_date) for c, g in zip(cits, glossed)]
         if self.judge_used == "nli" and cits:
-            probs = self._nli.score([(gloss(c.passage_text), claim.text) for c in cits])
+            probs = self._nli.score([(g, claim.text) for g in glossed])
         else:
             probs = [(None, None, None)] * len(cits)
         r.evidence = [(c, p[0], p[2], d) for c, p, d in zip(cits, probs, dets)]
@@ -326,7 +343,9 @@ class ClaimVerificationPipeline:
         if self.judge_used == "nli":
             # Deterministic checks veto (a value, date or negation mismatch in the entailing passage itself); they
             # do not require word overlap, so paraphrases ("Ejektionsfraktion" ~ "EF") can be supported.
-            ent_ok = [e for c, e, x, d in r.evidence if e >= ENTAIL_T and not _veto(d)]
+            # Support also needs at least one shared content word: NLI alone entailed unrelated passages
+            # ("eine Koloskopie durchgeführt" from "eine Begutachtung durchgeführt").
+            ent_ok = [e for c, e, x, d in r.evidence if e >= ENTAIL_T and not _veto(d) and d["overlap"] > 0]
             contra = [x for c, e, x, d in r.evidence if x >= CONTRA_T and d["overlap"] >= 0.5]
             against = contra or det_conflict
             if ent_ok and not against:

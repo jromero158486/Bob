@@ -164,6 +164,20 @@ def _med_sig(f: ClinicalFact):
     return ((d.ingredient or d.drug_text).casefold(), d.strength_value, sched, (d.frequency_text or "").split(" ")[0])
 
 
+_INTERVAL = re.compile(r"\b(?:in|nach|binnen|innerhalb von|within|after)\s+(?:\d+|einem|einer|zwei|drei|vier|sechs|zwölf|one|"
+                       r"two|three|six|twelve)\s+(?:Tag|Woche|Monat|Jahr|day|week|month|year)\w*|"
+                       r"\b(?:halb|viertel)?jährlich\w*|\bregelmäßig\w*|\bregular(?:ly)?\b|\bannual(?:ly)?\b", re.I)
+
+
+def _interval(f: ClinicalFact) -> str | None:
+    """Follow-up interval exactly as written in the recommendation ("in 2 Monaten", "Regelmäßige"), if any."""
+    for text in (f.details.due_text, f.details.text, f.label):
+        m = _INTERVAL.search(text or "")
+        if m:
+            return m.group(0)
+    return None
+
+
 def _codes_ok(f: ClinicalFact, prefixes: list[str]) -> bool:
     return not prefixes or any(c.code.startswith(tuple(prefixes)) for c in f.codings)
 
@@ -374,16 +388,18 @@ class Executor:
         procs = [f for f in self._facts("procedure") if f.details.status == "performed"]
         claims = []
         for r in recs:
+            iv = _interval(r)
+            when = f"recommended {r.document_date}" + (f"; interval in the record: “{iv}”" if iv else "")
             for action in [a.strip() for a in r.details.action.split(",")]:
                 done = [p for p in procs if p.label == action and (p.document_date or "") > (r.document_date or "")
                         and p.document_id != r.document_id]
                 if done:
                     claims.append(self.syn.generic_claim([r] + done, step,
-                                                         f"{action} (recommended {r.document_date}): documented as performed "
+                                                         f"{action} ({when}): documented as performed "
                                                          f"{', '.join(sorted({_fdate(p) or '?' for p in done}))}"))
                 else:
                     claims.append(self.syn.generic_claim([r], step,
-                                                         f"{action} (recommended {r.document_date}): no later document "
+                                                         f"{action} ({when}): no later document "
                                                          f"records that it took place", kind="not_documented",
                                                          flags=["open / not documented"]))
         return claims

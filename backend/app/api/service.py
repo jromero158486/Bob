@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 import uuid
 
@@ -10,7 +11,8 @@ from sqlalchemy import select
 from backend.app.api.schemas import ConflictOut, Provenance, TaskResponse
 from backend.app.layer3_store.models import ExtractionRunRow
 from backend.app.layer3_store.repository import ClinicalStore
-from backend.app.layer4_planner.planner import plan_task
+from backend.app.layer4_planner.planner import _DE_WORDS, _search_terms, plan_task
+from backend.app.layer4_planner.vocabulary import ROLE_DEFAULTS
 from backend.app.layer5_retrieval.engine import Executor, Synthesizer, build_timeline
 from backend.app.layer6_verification.contradictions import detect_conflicts
 from backend.app.layer6_verification.verify import ClaimVerifier, summarize
@@ -22,6 +24,51 @@ class UnknownPatient(KeyError):
 
 def patient_conflicts(store: ClinicalStore, patient_id: str, as_of: str | None = None):
     return detect_conflicts(store.facts(patient_id, as_of=as_of))
+
+
+NOTICES = {
+    "out_of_scope": {
+        "en": "This request could not be related to information in this patient's record, so no patient data is shown. "
+              "Please ask about documented clinical information (e.g. medication, allergies, findings, diagnoses, follow-ups).",
+        "de": "Die Anfrage ließ sich keiner Information in der Dokumentation dieser Patientin zuordnen; daher werden keine "
+              "Patientendaten angezeigt. Bitte nach dokumentierten klinischen Informationen fragen (z. B. Medikation, "
+              "Allergien, Befunde, Diagnosen, Kontrollen)."},
+    "unspecific": {
+        "en": "The request did not name specific clinical information; showing the standard items for the stated role "
+              "and passages matching its words. Please specify what you need.",
+        "de": "Die Anfrage nennt keine konkrete klinische Information; angezeigt werden Standardinhalte für die angegebene "
+              "Rolle und passende Textstellen. Bitte präzisieren."},
+    "no_invention": {
+        "en": "Lumen only reports what is documented in the record; it does not create diagnoses, causes or conclusions. "
+              "Documented information related to the request is shown below.",
+        "de": "Lumen gibt nur dokumentierte Informationen wieder und erstellt keine Diagnosen, Ursachen oder "
+              "Schlussfolgerungen. Unten stehen die zur Anfrage dokumentierten Informationen."},
+}
+_INVENT = re.compile(r"\b(?:invent|make up|made[- ]up|fabricat|guess|speculat|hypothes|pretend|assume (?:she|he|that)|"
+                     r"erfind|ausdenk|erfunden|spekulier|vermute|nimm an)\w*", re.I)
+
+
+_CLINICAL_CUE = re.compile(r"relevan|nutrition|ernähr|\bdiet|counsel|beratung|mobili|physio|therap|risk|risik|\bcare\b|"
+                          r"pflege|assess|status|history|anamnes|befund|finding|discharge|entlass|clinic|klinisch|"
+                          r"medizin|medical|patient|symptom|beschwerd|treat|behandl|exam|untersuch|health|gesund")
+
+
+def assess_scope(store: ClinicalStore, patient_id: str, request: str, plan) -> tuple[str, list[str]]:
+    """Out-of-scope / unspecific / invention-request handling for the rule planner. A request that names no known
+    clinical concept and whose words occur nowhere in the record gets a clarification instead of a generic summary."""
+    notices = ["no_invention"] if _INVENT.search(request) else []
+    if plan.planner.name != "heuristic-fallback" or plan.presentation.emphasis or \
+            any(s.concept.startswith("documented ") for s in plan.steps):
+        return "clinical", notices
+    low = request.casefold()
+    role_known = any(re.search(p, low) for p, _ in ROLE_DEFAULTS)
+    terms = [t for t in _search_terms(request) if len(t) >= 4 and t.casefold() not in _DE_WORDS]
+    found = store.search_passages(patient_id, " ".join(terms), limit=20) if terms else []
+    word = re.compile(r"\b(?:" + "|".join(map(re.escape, terms)) + r")\b", re.I) if terms else None
+    hits = [p for p, _ in found if word.search(p.display_text)]  # whole words: "morgen" is not "morgendliche"
+    if not _CLINICAL_CUE.search(low) and ((terms and not hits) or (not terms and not role_known)):
+        return "out_of_scope", notices + ["out_of_scope"]
+    return "unspecific", notices + ["unspecific"]
 
 
 def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None,
@@ -37,7 +84,8 @@ def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None,
     latest = max(d.document_date for d in docs if d.document_date)
     as_of = plan.as_of or latest
     ex = Executor(store, patient_id, as_of, retrieval=retrieval)
-    sections, missing = ex.run(plan)
+    scope, notices = assess_scope(store, patient_id, request, plan)
+    sections, missing = ex.run(plan) if scope != "out_of_scope" else ([], [])
     t2 = time.perf_counter()
     conflicts = detect_conflicts(ex.all_facts)
     verifier = ClaimVerifier(store, patient_id, as_of, conflicts)
@@ -71,7 +119,9 @@ def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None,
                       retrieval_mode=ex.retrieval, retrieval_used=sorted(ex.retrieval_used),
                       retrieval_warnings=ex.retrieval_warnings)
     return TaskResponse(request_id="req:" + uuid.uuid4().hex[:12], patient_id=patient_id, request=request, as_of=as_of,
-                        plan=plan, sections=sections, missing=missing, conflicts=conf_out, timeline=timeline,
+                        plan=plan, sections=sections, missing=missing, scope=scope, notices=notices,
+                        conflicts=conf_out if scope != "out_of_scope" else [],
+                        timeline=timeline if scope != "out_of_scope" else [],
                         verification=summarize(claims), provenance=prov,
                         timings_ms={"plan": round((t1 - t0) * 1000, 1), "retrieve": round((t2 - t1) * 1000, 1),
                                     "verify": round((t3 - t2) * 1000, 1), "total": round((t3 - t0) * 1000, 1)})

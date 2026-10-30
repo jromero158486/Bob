@@ -103,7 +103,7 @@ Optional claim verification with medication abbreviations (*known limitation 2, 
 
 ## Known limitations (not fixed, to protect the deployed demo)
 
-English/German generalization (10 new tasks, 12 verification checks) and the fixes for it, which are on a branch and not deployed: [MULTILINGUAL_RESULTS.md](MULTILINGUAL_RESULTS.md).
+English/German generalization (10 new tasks, 12 verification checks) and the fixes for it, which are on a branch and not deployed: [MULTILINGUAL_RESULTS.md](MULTILINGUAL_RESULTS.md). The fixes for gaps 4.1, 4.2 and 5.1 (15/15 on the API screens), the edge cases and the Gemini assessment are also on a branch and not deployed: [RELIABILITY_RESULTS.md](RELIABILITY_RESULTS.md).
 
 
 1. A situation that mentions contrast imaging only implicitly (4.2) does not trigger the kidney-function missing-information check. An explicit request (N4) does.

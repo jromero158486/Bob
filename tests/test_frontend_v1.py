@@ -62,3 +62,21 @@ def test_patients_documents_longitudinal_review_and_verify(client):
                            json={"reviewItemId": items[0]["id"], "factId": items[0]["fact"]["id"], "decision": "approve"}).json() == {"accepted": True}
     v = client.post("/api/v1/verify-statement", json={"patientId": "patient-syn-A", "statement": "Gewicht 80 kg", "judge": "none"})
     assert v.status_code == 200 and v.json()["claims"][0]["clinically_verified"] is False
+
+
+def test_locale_parameter_sets_response_language(client):
+    body = {"patientId": "patient-syn-A", "role": "Hausärztin", "task": "Aktuelle Medikation und Allergien?"}
+    de = client.post("/api/v1/clinical-tasks", json={**body, "locale": "de"}).json()
+    en = client.post("/api/v1/clinical-tasks", json={**body, "locale": "en"}).json()
+    auto = client.post("/api/v1/clinical-tasks", json=body).json()
+    titles = lambda j: {b["title"] for b in j["blocks"]}
+    assert "Zusammenfassung" in titles(de) and "Summary" in titles(en) and "Zusammenfassung" in titles(auto)
+    quotes = lambda j: sorted(e["quote"] for f in j["facts"].values() for e in f["evidence"])
+    assert quotes(de) == quotes(en)  # original German evidence is identical in both languages
+
+
+def test_out_of_scope_request_returns_no_patient_data(client):
+    j = client.post("/api/v1/clinical-tasks", json={"patientId": "patient-syn-A", "role": "Surgeon",
+                                                     "task": "What will the weather be in Vienna tomorrow?"}).json()
+    assert not j["facts"] and [b["kind"] for b in j["blocks"]] == ["summary"]
+    assert "could not be related" in j["blocks"][0]["sentences"][0]["text"]

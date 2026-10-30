@@ -81,6 +81,7 @@ On **one synthetic IBM patient (8 documents)**, our internal evaluation found:
 - **Passage fact recall@10:** BGE-M3 dense retrieval **57%** versus **9%** for keyword-only retrieval (28 bilingual queries).
 - **Claim checking:** **0 false-supported claims** in a small 34-claim evaluation with deterministic checks plus multilingual NLI; contradiction recall was **55%**.
 - **English ↔ German:** 5 new task pairs and 6 statement pairs, checked by hand. Results and the fixes (on a branch) are in [docs/MULTILINGUAL_RESULTS.md](docs/MULTILINGUAL_RESULTS.md).
+- **Reliability (branch, not deployed):** IBM 15/15 on the API screens, 12 edge cases (out-of-scope, requests to invent, missing vs. negative findings, synonyms), `locale` support and the Gemini assessment: [docs/RELIABILITY_RESULTS.md](docs/RELIABILITY_RESULTS.md).
 
 These are **preliminary, small-sample engineering results**, not evidence of clinical safety or generalization. See the [scientific report](docs/SCIENTIFIC_REPORT.md) for methods, baselines and limitations.
 

@@ -124,6 +124,8 @@ class TaskResponse(BaseModel):
     verification: VerificationSummary
     provenance: Provenance
     timings_ms: dict[str, float]
+    scope: Literal["clinical", "unspecific", "out_of_scope"] = "clinical"
+    notices: list[str] = Field(default_factory=list, description="Notice codes, see service.NOTICES")
     disclaimer: str = ("Research prototype on synthetic data. Facts are extracted from the source documents and "
                        "verified for provenance only; this is not a medical device and does not establish clinical truth.")
 
