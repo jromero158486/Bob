@@ -272,6 +272,74 @@ class ClinicalStore:
                     scored.append((p, score / len(lw)))
             return sorted(scored, key=lambda x: -x[1])[:limit]
 
+    # ---------- dense / sparse / multi-vector passage index (Phase 2) ----------
+    def has_pgvector(self) -> bool:
+        if self.engine.dialect.name != "postgresql":
+            return False
+        with self.engine.connect() as c:
+            return c.execute(text("SELECT 1 FROM information_schema.columns WHERE table_name = 'passage_embeddings' "
+                                  "AND column_name = 'dense_vec'")).first() is not None
+
+    def index_embeddings(self, patient_id: str, encoder, batch_size: int = 16) -> dict:
+        """Encode current passages of one patient that have no embedding (or a stale one) for this model."""
+        from backend.app.layer3_store.models import PassageEmbedding
+        from backend.app.layer5_retrieval.embeddings import colbert_to_bytes, text_sha
+        pgv = self.has_pgvector()
+        with self.Session() as s:
+            have = {r.passage_id: r.text_sha256 for r in s.scalars(select(PassageEmbedding).where(
+                PassageEmbedding.patient_id == patient_id, PassageEmbedding.model == encoder.name))}
+            todo = [p for p in s.scalars(select(Passage).join(Document, Document.source_id == Passage.source_id)
+                                         .where(Passage.patient_id == patient_id, Document.is_current.is_(True)))
+                    if have.get(p.passage_id) != text_sha(p.display_text)]
+            for i in range(0, len(todo), batch_size):
+                chunk = todo[i:i + batch_size]
+                for p, e in zip(chunk, encoder.encode([p.display_text for p in chunk], batch_size)):
+                    s.merge(PassageEmbedding(patient_id=patient_id, passage_id=p.passage_id, model=encoder.name,
+                                             model_revision=encoder.revision, text_sha256=text_sha(p.display_text),
+                                             dense=[round(float(x), 6) for x in e.dense], sparse=e.sparse,
+                                             colbert=colbert_to_bytes(e.colbert), colbert_tokens=len(e.colbert)))
+                    if pgv:
+                        s.flush()
+                        s.execute(text("UPDATE passage_embeddings SET dense_vec = CAST(:v AS vector) WHERE "
+                                       "patient_id = :p AND passage_id = :i AND model = :m"),
+                                  {"v": "[" + ",".join(f"{x:.6f}" for x in e.dense) + "]", "p": patient_id,
+                                   "i": p.passage_id, "m": encoder.name})
+            s.commit()
+        return {"encoded": len(todo), "already_indexed": len(have), "pgvector": pgv, "model": encoder.name,
+                "revision": encoder.revision}
+
+    def embedding_rows(self, patient_id: str, model: str) -> list:
+        from backend.app.layer3_store.models import PassageEmbedding
+        with self.Session() as s:
+            q = (select(PassageEmbedding).join(Passage, (Passage.patient_id == PassageEmbedding.patient_id)
+                                               & (Passage.passage_id == PassageEmbedding.passage_id))
+                 .join(Document, Document.source_id == Passage.source_id)
+                 .where(PassageEmbedding.patient_id == patient_id, PassageEmbedding.model == model,
+                        Document.is_current.is_(True)))
+            rows = list(s.scalars(q))
+            s.expunge_all()
+            return rows
+
+    def dense_search(self, patient_id: str, model: str, qvec, limit: int = 30) -> tuple[list[tuple[str, float]], str]:
+        """Cosine (= dot, vectors are normalized) nearest passages of one patient; pgvector when available."""
+        if self.has_pgvector():
+            with self.Session() as s:
+                rows = s.execute(text(
+                    "SELECT e.passage_id, 1 - (e.dense_vec <=> CAST(:q AS vector)) AS score FROM passage_embeddings e "
+                    "JOIN passages p ON p.patient_id = e.patient_id AND p.passage_id = e.passage_id "
+                    "JOIN documents d ON d.source_id = p.source_id AND d.is_current "
+                    "WHERE e.patient_id = :pid AND e.model = :m ORDER BY e.dense_vec <=> CAST(:q AS vector) LIMIT :lim"),
+                    {"q": "[" + ",".join(f"{float(x):.6f}" for x in qvec) + "]", "pid": patient_id, "m": model,
+                     "lim": limit}).all()
+            return [(r[0], float(r[1])) for r in rows], "pgvector"
+        import numpy as np
+        rows = self.embedding_rows(patient_id, model)
+        if not rows:
+            return [], "python-cosine"
+        scores = np.asarray([r.dense for r in rows], dtype=np.float32) @ np.asarray(qvec, dtype=np.float32)
+        order = np.argsort(-scores)[:limit]
+        return [(rows[i].passage_id, float(scores[i])) for i in order], "python-cosine"
+
     # ---------- human review ----------
     def upsert_review_item(self, patient_id: str, item_key: str, item_type: str, summary: str, payload: dict) -> dict:
         with self.Session.begin() as s:

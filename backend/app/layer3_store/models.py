@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import (JSON, Boolean, DateTime, ForeignKey, ForeignKeyConstraint, Index, Integer, String, Text,
+from sqlalchemy import (JSON, Boolean, LargeBinary, PrimaryKeyConstraint, DateTime, ForeignKey, ForeignKeyConstraint, Index, Integer, String, Text,
                         UniqueConstraint)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -183,3 +183,24 @@ class ReviewEvent(Base):
     comment: Mapped[str | None] = mapped_column(Text)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     item: Mapped[ReviewItem] = relationship(back_populates="events")
+
+
+class PassageEmbedding(Base):
+    """Per-passage BGE-M3 encodings. `dense` is portable JSON; on PostgreSQL with pgvector the
+    migration adds `dense_vec vector(1024)` (written/queried with raw SQL, not mapped here)."""
+    __tablename__ = "passage_embeddings"
+    patient_id: Mapped[str] = mapped_column(String(128))
+    passage_id: Mapped[str] = mapped_column(String(320))
+    model: Mapped[str] = mapped_column(String(128))
+    model_revision: Mapped[str] = mapped_column(String(64))
+    text_sha256: Mapped[str] = mapped_column(String(64))
+    dense: Mapped[list] = mapped_column(JSON)
+    sparse: Mapped[dict] = mapped_column(JSON)
+    colbert: Mapped[bytes | None] = mapped_column(LargeBinary)
+    colbert_tokens: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (
+        ForeignKeyConstraint(["patient_id", "passage_id"], ["passages.patient_id", "passages.passage_id"],
+                             ondelete="CASCADE", name="fk_embeddings_patient_passage"),
+        PrimaryKeyConstraint("patient_id", "passage_id", "model"),
+    )

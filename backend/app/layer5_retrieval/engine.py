@@ -6,6 +6,7 @@ No free-text generation here: every claim is rendered from typed facts and carri
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from collections import OrderedDict
 from datetime import date
@@ -14,6 +15,7 @@ from backend.app.api.schemas import Citation, Claim, MissingItem, Section, Timel
 from backend.app.layer2_extraction.contracts import ClinicalFact
 from backend.app.layer3_store.repository import ClinicalStore
 from backend.app.layer4_planner.contracts import PlanStep, TaskPlan
+from backend.app.layer5_retrieval.embeddings import EmbeddingsUnavailable
 
 OBS_DISPLAY = {"body_height": "Height", "body_weight": "Weight", "bmi": "BMI", "body_temperature": "Temperature",
                "heart_rate": "Heart rate", "blood_pressure": "Blood pressure", "lvef": "LV ejection fraction",
@@ -167,8 +169,12 @@ def _codes_ok(f: ClinicalFact, prefixes: list[str]) -> bool:
 
 
 class Executor:
-    def __init__(self, store: ClinicalStore, patient_id: str, as_of: str):
+    def __init__(self, store: ClinicalStore, patient_id: str, as_of: str, retrieval: str | None = None):
         self.store, self.pid, self.as_of = store, patient_id, as_of
+        # lexical | dense | hybrid | hybrid_rerank; what actually ran is recorded in retrieval_used.
+        self.retrieval = (retrieval or os.environ.get("RETRIEVAL_MODE", "lexical")).lower()
+        self.retrieval_used: set[str] = set()
+        self.retrieval_warnings: list[str] = []
         self.syn = Synthesizer(store, patient_id)
         self.all_facts = store.facts(patient_id, as_of=as_of)
 
@@ -380,34 +386,89 @@ class Executor:
                 pass
         return claims
 
-    def op_search_text(self, step: PlanStep, k: int = 6) -> list[Claim]:
+    def _eligible(self, p, step: PlanStep) -> bool:
+        if p.passage_type in ("section_heading", "table_header") or len(p.display_text) < 25:
+            return False
+        if step.filters.require_terms and not any(r.casefold() in p.display_text.casefold()
+                                                  for r in step.filters.require_terms):
+            return False
+        d = self.syn.docs.get(p.source_id)
+        return d is not None and (d.document_date or "") <= self.as_of
+
+    def _model_rankings(self, query: str, step: PlanStep, passages: dict, n: int = 50) -> dict[str, list[str]]:
+        """BGE-M3 dense, sparse and multi-vector rankings over this patient's current, eligible passages."""
+        from backend.app.layer5_retrieval.embeddings import colbert_from_bytes, shared_encoder
+        enc = shared_encoder()
+        rows = [r for r in self.store.embedding_rows(self.pid, enc.name)]
+        if not rows:
+            raise EmbeddingsUnavailable(f"no {enc.name} embeddings indexed for this patient")
+        found = self.store.passages(self.pid, [r.passage_id for r in rows])
+        ok = {pid for pid, p in found.items() if self._eligible(p, step)}
+        passages.update({pid: found[pid] for pid in ok})
+        q = enc.encode([query])[0]
+        dense, backend = self.store.dense_search(self.pid, enc.name, q.dense, limit=len(rows))
+        self.retrieval_used.add(f"dense:{backend}")
+        rows = [r for r in rows if r.passage_id in ok]
+        sparse = sorted(rows, key=lambda r: -enc.sparse_score(q.sparse, r.sparse))
+        colbert = sorted(rows, key=lambda r: -enc.colbert_score(q.colbert, colbert_from_bytes(r.colbert, r.colbert_tokens)))
+        return {"dense": [pid for pid, _ in dense if pid in ok][:n],
+                "sparse": [r.passage_id for r in sparse if enc.sparse_score(q.sparse, r.sparse) > 0][:n],
+                "colbert": [r.passage_id for r in colbert][:n]}
+
+    def search_passages(self, step: PlanStep, k: int = 6) -> tuple[list[str], dict, str]:
+        """Ranked passage ids for a search step. Lexical ranking is per-term reciprocal rank fusion
+        (Cormack et al., 2009); hybrid modes fuse it with BGE-M3 dense/sparse/multi-vector rankings by RRF
+        and optionally rerank the fused top 20 with the BGE cross-encoder."""
         terms = step.filters.search_terms
-        if not terms:
-            return []
-        scores: dict[str, float] = {}
-        passages = {}
-        for t in terms:  # reciprocal rank fusion over per-term rankings (Cormack et al., 2009)
+        passages: dict = {}
+        lex: dict[str, float] = {}
+        for t in terms:
             for rank, (p, _) in enumerate(self.store.search_passages(self.pid, t, limit=30)):
-                if p.passage_type in ("section_heading", "table_header") or len(p.display_text) < 25:
-                    continue
-                if step.filters.require_terms and not any(r.casefold() in p.display_text.casefold()
-                                                          for r in step.filters.require_terms):
-                    continue
-                d = self.syn.docs.get(p.source_id)
-                if d is None or (d.document_date or "") > self.as_of:
+                if not self._eligible(p, step):
                     continue
                 passages[p.passage_id] = p
-                scores[p.passage_id] = scores.get(p.passage_id, 0) + 1 / (60 + rank)
-        top = sorted(scores, key=lambda i: -scores[i])[:k]
+                lex[p.passage_id] = lex.get(p.passage_id, 0) + 1 / (60 + rank)
+        rankings = {"lexical": sorted(lex, key=lambda i: -lex[i])}
+        used = "lexical"
+        query = f"{step.title}: {', '.join(terms)}"
+        if self.retrieval != "lexical":
+            try:
+                rankings.update(self._model_rankings(query, step, passages))
+                used = self.retrieval
+            except EmbeddingsUnavailable as exc:
+                self.retrieval_warnings.append(f"{self.retrieval} retrieval unavailable, lexical used: {exc}")
+        if used == "dense":
+            fused = rankings["dense"]
+        else:
+            rrf: dict[str, float] = {}
+            for ranking in rankings.values():
+                for rank, pid in enumerate(ranking):
+                    rrf[pid] = rrf.get(pid, 0) + 1 / (60 + rank)
+            fused = sorted(rrf, key=lambda i: -rrf[i])
+        if used == "hybrid_rerank" and fused:
+            from backend.app.layer5_retrieval.embeddings import shared_reranker
+            try:
+                head = fused[:20]
+                sc = shared_reranker().score(query, [passages[i].display_text for i in head])
+                fused = [i for _, i in sorted(zip(sc, head), key=lambda x: -x[0])] + fused[20:]
+            except EmbeddingsUnavailable as exc:
+                self.retrieval_warnings.append(f"reranker unavailable: {exc}")
+                used = "hybrid"
+        self.retrieval_used.add(used)
+        return fused[:k], passages, used
+
+    def op_search_text(self, step: PlanStep, k: int = 6) -> list[Claim]:
+        if not step.filters.search_terms:
+            return []
+        top, passages, used = self.search_passages(step, k)
         claims = []
         for pid in top:
             p = passages[pid]
             cit = self.syn.passage_citation(p)
             claims.append(Claim(claim_id=_cid(step.concept, pid), text=p.display_text, original_text=p.display_text,
                                 kind="passage", date=cit.document_date, citations=[cit],
-                                notes=["Original passage retrieved by lexical search (not a structured fact)"]))
+                                notes=[f"Original passage retrieved by {used} search (not a structured fact)"]))
         return claims
-
 
 def build_timeline(store: ClinicalStore, patient_id: str, as_of: str, syn: Synthesizer) -> list[TimelineEvent]:
     events = []
