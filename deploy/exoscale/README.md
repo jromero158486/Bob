@@ -30,6 +30,14 @@ curl -s -H "Authorization: Bearer $DEMO_API_TOKEN" https://$DOMAIN/api/v1/patien
 ```
 First start downloads ~5 GB of models (several minutes on Exoscale bandwidth); later restarts reuse the volume.
 
+## Current deployment
+- Instance `lumen-demo` (standard.large, 50 GiB, at-vie-1), security group `lumen-demo` (443/80 public, 22 operator
+  IP only), public URL `https://85-217-172-189.sslip.io/api/v1` (health: `/api/health`).
+- Lovable production build reads `.env.production` in the frontend repo (base URL + demo token).
+- Operations (SSH as `ubuntu`, repo in `~/lumen`):
+  `docker compose -f docker-compose.yml -f deploy/exoscale/docker-compose.cloud.yml --env-file deploy/exoscale/.env ps|logs|restart`.
+- Stop after judging: `exo compute instance stop lumen-demo -z at-vie-1` (or `delete`).
+
 ## Lovable
 Set in the Lovable project (build-time env) and republish:
 ```
