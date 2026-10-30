@@ -42,7 +42,10 @@ _STOP = set("der die das ein eine einer eines einem den dem des und oder mit von
             "für ist sind war wurde wurden hat haben sie er es patientin patient the a an of and or with in on at "
             "for is was were has have she he her his patient to by as "
             # polarity words are judged by the negation check, not used to match topics
-            "positiv negativ positive negative kein keine keinen keinem keiner nicht ohne no not without".split())
+            "positiv negativ positive negative kein keine keinen keinem keiner nicht ohne no not without "
+            # generic clinical predicates: they must not make unrelated passages look topical
+            "nimmt erhält erhielt zeigte zeigt zeigten zeigen besteht bestand betrug beträgt lag liegt wurde "
+            "durchgeführt geplant empfohlen takes took received showed shows was were done planned".split())
 _TOK = re.compile(r"[a-zäöüß0-9]+", re.I)
 
 
@@ -159,6 +162,10 @@ def deterministic_check(claim: str, evidence: str, document_date: str | None = N
             "negation": "pass" if neg_c == neg_e else "fail"}
 
 
+def _veto(d: dict) -> bool:
+    return d["values"] == "fail" or d["dates"] == "fail" or d["negation"] == "fail"
+
+
 def _claim_terms(claim: str) -> list[str]:
     """Search terms for one claim: the planner's lexicon terms plus the claim's own content words (VeriFact
     queries with the claim text itself; the dense/hybrid modes embed title + terms)."""
@@ -252,16 +259,20 @@ class ClaimVerificationPipeline:
                 return self._done(r, "contradicted", True, "deterministic: value or negation differs from topical evidence")
             return self._done(r, "not_addressed", True, "insufficient evidence" if not det_conflict else "mixed evidence")
         if self.judge_used == "nli":
-            ent_ok = [e for c, e, x, d in det_ok if e >= ENTAIL_T]
-            contra = [x for c, e, x, d in r.evidence if x >= CONTRA_T and d["overlap"] >= 0.3]
-            if ent_ok and not contra:
-                return self._done(r, "supported", False, "entailed by cited evidence and deterministic checks pass")
-            if contra and not ent_ok:
-                return self._done(r, "contradicted", True, "evidence contradicts the claim (NLI)")
-            if ent_ok and contra:
+            # Deterministic checks veto (a value, date or negation mismatch in the entailing passage itself); they
+            # do not require word overlap, so paraphrases ("Ejektionsfraktion" ~ "EF") can be supported.
+            ent_ok = [e for c, e, x, d in r.evidence if e >= ENTAIL_T and not _veto(d)]
+            contra = [x for c, e, x, d in r.evidence if x >= CONTRA_T and d["overlap"] >= 0.5]
+            against = contra or det_conflict
+            if ent_ok and not against:
+                return self._done(r, "supported", False, "entailed by cited evidence; no value/date/negation mismatch")
+            if against and not ent_ok:
+                return self._done(r, "contradicted", True, "evidence contradicts the claim"
+                                  + (" (NLI)" if contra else " (deterministic)"))
+            if ent_ok and against:
                 return self._done(r, "not_addressed", True, "conflicting evidence")
             if sem["entail"] >= ENTAIL_T:
-                return self._done(r, "not_addressed", True, "model entailment without deterministic agreement")
+                return self._done(r, "not_addressed", True, "model entailment vetoed by value/date/negation check")
             return self._done(r, "not_addressed", True, "insufficient evidence")
         # groq
         if sem["entail"] == 1.0 and det_ok and not det_conflict:
