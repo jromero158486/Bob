@@ -1,0 +1,40 @@
+{"text": "Kein Hinweis auf Perikarderguss.", "target": "Perikarderguss", "negated": true}
+{"text": "Ausschluss einer Lungenembolie.", "target": "Lungenembolie", "negated": true}
+{"text": "Ein Pleuraerguss ist nicht nachweisbar.", "target": "Pleuraerguss", "negated": true}
+{"text": "Keine Allergien bekannt.", "target": "Allergien", "negated": true}
+{"text": "Patientin verneint Thoraxschmerzen.", "target": "Thoraxschmerzen", "negated": true}
+{"text": "Ohne Anhalt für Malignität.", "target": "Malignität", "negated": true}
+{"text": "Fieber wurde nicht beobachtet.", "target": "Fieber", "negated": true}
+{"text": "Eine Herzinsuffizienz konnte ausgeschlossen werden.", "target": "Herzinsuffizienz", "negated": true}
+{"text": "Kein Diabetes mellitus.", "target": "Diabetes mellitus", "negated": true}
+{"text": "Frei von Ödemen.", "target": "Ödemen", "negated": true}
+{"text": "Bekannte arterielle Hypertonie.", "target": "arterielle Hypertonie", "negated": false}
+{"text": "Diabetes mellitus Typ II, insulinpflichtig.", "target": "Diabetes mellitus Typ II", "negated": false}
+{"text": "Nachweis einer Carotisstenose links.", "target": "Carotisstenose", "negated": false}
+{"text": "Vorhofflimmern im Langzeit-EKG.", "target": "Vorhofflimmern", "negated": false}
+{"text": "Hyperlipidämie unter Statintherapie.", "target": "Hyperlipidämie", "negated": false}
+{"text": "Vd.a. Mamma-Karzinom rechts.", "target": "Mamma-Karzinom", "negated": false, "certainty": "possible"}
+{"text": "Verdacht auf Pneumonie.", "target": "Pneumonie", "negated": false, "certainty": "possible"}
+{"text": "Am ehesten Gastroenteritis.", "target": "Gastroenteritis", "negated": false, "certainty": "possible"}
+{"text": "Möglicherweise Medikamentennebenwirkung.", "target": "Medikamentennebenwirkung", "negated": false, "certainty": "possible"}
+{"text": "DD Migräne.", "target": "Migräne", "negated": false, "certainty": "possible"}
+{"text": "Fraglich TIA.", "target": "TIA", "negated": false, "certainty": "possible"}
+{"text": "Z.n. Appendektomie.", "target": "Appendektomie", "negated": false, "temporality": "historical"}
+{"text": "St.p. Myokardinfarkt 2010.", "target": "Myokardinfarkt", "negated": false, "temporality": "historical"}
+{"text": "Anamnestisch Apoplex 2012.", "target": "Apoplex", "negated": false, "temporality": "historical"}
+{"text": "Zustand nach Cholezystektomie.", "target": "Cholezystektomie", "negated": false, "temporality": "historical"}
+{"text": "Geplant ist eine Koronarangiographie.", "target": "Koronarangiographie", "negated": false, "temporality": "future"}
+{"text": "Wir empfehlen eine Kontrollsonographie in 3 Monaten.", "target": "Kontrollsonographie", "negated": false, "temporality": "future"}
+{"text": "Eine Mammographie ist vorgesehen.", "target": "Mammographie", "negated": false, "temporality": "future"}
+{"text": "Die Mutter hatte ein Mammakarzinom.", "target": "Mammakarzinom", "negated": false, "experiencer": "family"}
+{"text": "Familienanamnese: Vater mit Myokardinfarkt.", "target": "Myokardinfarkt", "negated": false, "experiencer": "family"}
+{"text": "Bruder Diabetes mellitus Typ 2.", "target": "Diabetes mellitus Typ 2", "negated": false, "experiencer": "family"}
+{"text": "FA: Schwester mit Kolonkarzinom.", "target": "Kolonkarzinom", "negated": false, "experiencer": "family"}
+{"text": "Keine familiäre Belastung für Herzerkrankungen.", "target": "Herzerkrankungen", "negated": true, "experiencer": "family"}
+{"text": "Kein Anhalt für ein Rezidiv, Z.n. Mastektomie.", "target": "Mastektomie", "negated": false, "temporality": "historical"}
+{"text": "Kein Anhalt für ein Rezidiv, Z.n. Mastektomie.", "target": "Rezidiv", "negated": true}
+{"text": "Ein Infarkt wurde ausgeschlossen, jedoch zeigt sich eine Stenose.", "target": "Stenose", "negated": false}
+{"text": "Lymphknoten unauffällig, keine Lymphadenopathie.", "target": "Lymphadenopathie", "negated": true}
+{"text": "Hinweise auf Lymphadenopathie axillär.", "target": "Lymphadenopathie", "negated": false}
+{"text": "Eine pulmonale Hypertonie ist nicht auszuschließen.", "target": "pulmonale Hypertonie", "negated": false, "certainty": "possible"}
+{"text": "Rhythmusstörungen wurden nicht festgestellt.", "target": "Rhythmusstörungen", "negated": true}

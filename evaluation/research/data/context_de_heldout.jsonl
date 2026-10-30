@@ -1,0 +1,30 @@
+{"text": "Kein Nachweis von Metastasen.", "target": "Metastasen", "negated": true}
+{"text": "Eine Thrombose ist sonographisch nicht nachweisbar.", "target": "Thrombose", "negated": true}
+{"text": "Ohne Zeichen einer Infektion.", "target": "Infektion", "negated": true}
+{"text": "Dyspnoe wird verneint.", "target": "Dyspnoe", "negated": true}
+{"text": "Synkopen sind nicht bekannt.", "target": "Synkopen", "negated": true}
+{"text": "Kein Nikotinabusus.", "target": "Nikotinabusus", "negated": true}
+{"text": "Herzgeräusche nicht auskultierbar.", "target": "Herzgeräusche", "negated": true}
+{"text": "Ein Aneurysma wurde nicht gefunden.", "target": "Aneurysma", "negated": true}
+{"text": "Blutungszeichen fehlen.", "target": "Blutungszeichen", "negated": true}
+{"text": "Keine Hinweise auf eine Ischämie.", "target": "Ischämie", "negated": true}
+{"text": "Chronische Niereninsuffizienz Stadium 3.", "target": "Chronische Niereninsuffizienz", "negated": false}
+{"text": "Neu aufgetretenes Vorhofflimmern.", "target": "Vorhofflimmern", "negated": false}
+{"text": "Die Patientin klagt über Kopfschmerzen.", "target": "Kopfschmerzen", "negated": false}
+{"text": "Nicht nur Schwindel, sondern auch Übelkeit.", "target": "Übelkeit", "negated": false}
+{"text": "Verdacht auf Sinusvenenthrombose.", "target": "Sinusvenenthrombose", "negated": false, "certainty": "possible"}
+{"text": "Vermutlich vasovagale Synkope.", "target": "vasovagale Synkope", "negated": false, "certainty": "possible"}
+{"text": "Suspekter Herdbefund in der linken Mamma.", "target": "Herdbefund", "negated": false, "certainty": "possible"}
+{"text": "A.e. Exsikkose.", "target": "Exsikkose", "negated": false, "certainty": "possible"}
+{"text": "Eine Demenz kann nicht sicher ausgeschlossen werden.", "target": "Demenz", "negated": false, "certainty": "possible"}
+{"text": "Wahrscheinlich Harnwegsinfekt.", "target": "Harnwegsinfekt", "negated": false, "certainty": "possible"}
+{"text": "Status post Hüft-TEP rechts.", "target": "Hüft-TEP", "negated": false, "temporality": "historical"}
+{"text": "Früherer Alkoholabusus.", "target": "Alkoholabusus", "negated": false, "temporality": "historical"}
+{"text": "Z.n. PTCA 2014.", "target": "PTCA", "negated": false, "temporality": "historical"}
+{"text": "Eine Gastroskopie ist geplant.", "target": "Gastroskopie", "negated": false, "temporality": "future"}
+{"text": "Kontrolle der Nierenwerte in 2 Wochen.", "target": "Kontrolle der Nierenwerte", "negated": false, "temporality": "future"}
+{"text": "Eine Physiotherapie wird empfohlen.", "target": "Physiotherapie", "negated": false, "temporality": "future"}
+{"text": "Der Vater verstarb an einem Kolonkarzinom.", "target": "Kolonkarzinom", "negated": false, "experiencer": "family"}
+{"text": "Familienanamnese positiv für Brustkrebs.", "target": "Brustkrebs", "negated": false, "experiencer": "family"}
+{"text": "Die Tochter leidet an Asthma.", "target": "Asthma", "negated": false, "experiencer": "family"}
+{"text": "Großmutter mit Morbus Alzheimer.", "target": "Morbus Alzheimer", "negated": false, "experiencer": "family"}

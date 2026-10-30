@@ -1,21 +1,94 @@
 {
-  "version": "de-context-0.1",
-  "description": "German NegEx/ConText-inspired trigger rules. Regexes are case-insensitive. FORWARD/BACKWARD scopes end at clause terminators; BIDIRECTIONAL scopes cover the sentence.",
-  "clause_terminators": "[.;!?](?=\\s|$)|[,;:]|\\baber\\b|\\bjedoch\\b|\\bsowie\\b|\\bbei\\b|\\bwegen\\b|\\bda\\b|\\bund\\b(?=\\s+(?:ein|eine|einen|der|die|das)\\b)",
-  "sentence_terminators": "[.!?;](?=\\s|$)",
-  "rules": [
-    {"category": "NEGATED_EXISTENCE", "direction": "FORWARD", "pattern": "\\bkein(?:e|en|er|es|em)?\\s+(?:Anhalt|Hinweis|Nachweis|Zeichen|Anzeichen)\\s+(?:für|auf|von|einer?)?"},
-    {"category": "NEGATED_EXISTENCE", "direction": "FORWARD", "pattern": "\\bkein(?:e|en|er|es|em)?\\b"},
-    {"category": "NEGATED_EXISTENCE", "direction": "FORWARD", "pattern": "\\bohne\\b"},
-    {"category": "NEGATED_EXISTENCE", "direction": "FORWARD", "pattern": "\\bnicht\\b(?!\\s+nur)"},
-    {"category": "NEGATED_EXISTENCE", "direction": "FORWARD", "pattern": "\\bfrei\\s+von\\b"},
-    {"category": "NEGATED_EXISTENCE", "direction": "FORWARD", "pattern": "\\bAusschluss\\b"},
-    {"category": "NEGATED_EXISTENCE", "direction": "BACKWARD", "pattern": "\\b(?:ausgeschlossen|nicht\\s+nachweisbar|nicht\\s+nachgewiesen|nicht\\s+bestätigt|verneint)\\b"},
-    {"category": "POSSIBLE_EXISTENCE", "direction": "FORWARD", "pattern": "\\bV(?:d)?\\.\\s?a\\.|\\bVerdacht\\s+auf\\b|\\bfraglich(?:e|er|en|es)?\\b|\\bDD\\b|\\bmöglich(?:e|er|en|es)?\\b|\\bwahrscheinlich(?:e|er|en|es)?\\b|\\b\\w*suspekt\\w*\\b"},
-    {"category": "POSSIBLE_EXISTENCE", "direction": "BACKWARD", "pattern": "\\?"},
-    {"category": "HISTORICAL", "direction": "FORWARD", "pattern": "\\bSt\\.\\s?p\\.|\\bZ\\.\\s?n\\.|\\bStatus\\s+post\\b|\\bZustand\\s+nach\\b|\\banamnestisch\\b|\\bfrüher(?:e|er|en)?\\b"},
-    {"category": "HYPOTHETICAL", "direction": "BIDIRECTIONAL", "pattern": "\\bgeplant\\w*|\\bempfohlen\\b|\\bempfehlen\\b|\\bterminisiert\\b|\\bvorgesehen\\b|\\bsollte[n]?\\b|\\bsoll\\b|\\bNächste[rn]?\\b|\\bwird\\s+(?:\\w+\\s+){0,4}besprochen\\b|\\bnachfolgende\\w*\\b|\\b(?:in|nach)\\s+\\d+\\s+(?:Tagen|Wochen|Monaten|Jahren)\\b"},
-    {"category": "FAMILY", "direction": "BIDIRECTIONAL", "pattern": "\\bFamilienanamnes\\w*|\\b(?:Mutter|Vater|Schwester|Bruder|Tochter|Sohn)\\b"}
-  ],
-  "question_prefix": "^\\s*(?:Fragestellung|Frage)\\s*:"
+ "version": "de-context-0.2",
+ "description": "German NegEx/ConText-inspired trigger rules. Regexes are case-insensitive. FORWARD/BACKWARD scopes end at clause terminators; BIDIRECTIONAL scopes cover the sentence.",
+ "clause_terminators": "[.;!?](?=\\s|$)|[,;:]|\\baber\\b|\\bjedoch\\b|\\bsowie\\b|\\bbei\\b|\\bwegen\\b|\\bda\\b|\\bund\\b(?=\\s+(?:ein|eine|einen|der|die|das)\\b)",
+ "sentence_terminators": "[.!?;](?=\\s|$)",
+ "rules": [
+  {
+   "category": "POSSIBLE_EXISTENCE",
+   "direction": "BACKWARD",
+   "pattern": "\\bnicht\\s+(?:sicher\\s+)?auszuschlie(?:ß|ss)en\\b|\\bnicht\\s+(?:sicher\\s+)?ausgeschlossen\\s+werden\\b"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "BACKWARD",
+   "pattern": "\\b(?:nicht|nie)\\s+(?:mehr\\s+)?(?:beobachtet|festgestellt|gefunden|gesehen|beschrieben|erhoben|vorhanden|abgrenzbar|darstellbar|eruierbar|bekannt)\\b"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bkein(?:e|en|er|es|em)?\\s+(?:Anhalt|Hinweis|Nachweis|Zeichen|Anzeichen)\\s+(?:für|auf|von|einer?)?"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bkein(?:e|en|er|es|em)?\\b"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bohne\\b"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bnicht\\b(?!\\s+nur)"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bfrei\\s+von\\b"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bAusschluss\\b"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "BACKWARD",
+   "pattern": "\\b(?:ausgeschlossen|nicht\\s+nachweisbar|nicht\\s+nachgewiesen|nicht\\s+bestätigt)\\b"
+  },
+  {
+   "category": "POSSIBLE_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bV(?:d)?\\.\\s?a\\.|\\bVerdacht\\s+auf\\b|\\bfraglich(?:e|er|en|es)?\\b|\\bDD\\b|\\bmöglich(?:e|er|en|es)?\\b|\\bwahrscheinlich(?:e|er|en|es)?\\b|\\b\\w*suspekt\\w*\\b"
+  },
+  {
+   "category": "POSSIBLE_EXISTENCE",
+   "direction": "BACKWARD",
+   "pattern": "\\?"
+  },
+  {
+   "category": "HISTORICAL",
+   "direction": "FORWARD",
+   "pattern": "\\bSt\\.\\s?p\\.|\\bZ\\.\\s?n\\.|\\bStatus\\s+post\\b|\\bZustand\\s+nach\\b|\\banamnestisch\\b|\\bfrüher(?:e|er|en)?\\b"
+  },
+  {
+   "category": "HYPOTHETICAL",
+   "direction": "BIDIRECTIONAL",
+   "pattern": "\\bgeplant\\w*|\\bempfohlen\\b|\\bempfehlen\\b|\\bterminisiert\\b|\\bvorgesehen\\b|\\bsollte[n]?\\b|\\bsoll\\b|\\bNächste[rn]?\\b|\\bwird\\s+(?:\\w+\\s+){0,4}besprochen\\b|\\bnachfolgende\\w*\\b|\\b(?:in|nach)\\s+\\d+\\s+(?:Tagen|Wochen|Monaten|Jahren)\\b"
+  },
+  {
+   "category": "FAMILY",
+   "direction": "BIDIRECTIONAL",
+   "pattern": "\\bFamilienanamnes\\w*|\\b(?:Mutter|Vater|Schwester|Bruder|Tochter|Sohn)\\b"
+  },
+  {
+   "category": "NEGATED_EXISTENCE",
+   "direction": "BIDIRECTIONAL",
+   "pattern": "\\bverneint\\b"
+  },
+  {
+   "category": "POSSIBLE_EXISTENCE",
+   "direction": "FORWARD",
+   "pattern": "\\bam\\s+ehesten\\b|\\bmöglicherweise\\b|\\bvermutlich\\b|\\ba\\.\\s?e\\.|\\bnicht\\s+sicher\\b"
+  },
+  {
+   "category": "FAMILY",
+   "direction": "BIDIRECTIONAL",
+   "pattern": "\\bfamiliär\\w*\\s+(?:Belastung|Disposition|Häufung|Vorbelastung)\\b|\\bFA\\s*:"
+  }
+ ],
+ "question_prefix": "^\\s*(?:Fragestellung|Frage)\\s*:"
 }
