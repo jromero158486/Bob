@@ -82,6 +82,20 @@ def _gernermed_candidates(view: PassageView, ents, existing: list[Candidate], in
     return out
 
 
+def _medspacy_component(engines: list[str]) -> ComponentRun:
+    try:
+        import medspacy
+        import spacy
+        ver = f"medspacy {medspacy.__version__}; spacy {spacy.__version__}"
+    except ImportError:
+        return ComponentRun(name="medspacy-sectionizer", version="-", status="unavailable",
+                            detail="medspacy not installed; Layer 1 used rule-based sections")
+    if "medspacy" in engines:
+        return ComponentRun(name="medspacy-sectionizer", version=ver, status="ran")
+    return ComponentRun(name="medspacy-sectionizer", version=ver, status="disabled",
+                        detail=f"section engine used: {','.join(engines)}")
+
+
 def extract(records: Iterable[IngestedDocument], *, context_engine: str = "native",
             ner: GernermedNER | None = None, llm=None) -> ExtractionResult:
     records = list(records)
@@ -89,7 +103,9 @@ def extract(records: Iterable[IngestedDocument], *, context_engine: str = "nativ
                         patient_ids=sorted({r.document.patient_id for r in records}),
                         document_ids=[r.document.document_id for r in records],
                         resource_checksums=terminology.resource_checksums())
-    run.components.append(ComponentRun(name="layer1-sectionizer", version=",".join(sorted({r.section_engine for r in records})), status="ran"))
+    engines = sorted({r.section_engine for r in records})
+    run.components.append(ComponentRun(name="layer1-sectionizer", version=",".join(engines), status="ran"))
+    run.components.append(_medspacy_component(engines))
     run.components.append(ComponentRun(name=RULES.name, version=RULES.version, status="ran"))
     run.components.append(ComponentRun(name=f"context-{context_engine}", version=context.rules_version(), status="ran"))
     all_views = [v for r in records for v in views(r)]

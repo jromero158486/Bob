@@ -8,7 +8,9 @@ Configured only through environment variables; never logs prompts or keys.
 from __future__ import annotations
 
 import json
+import time
 import os
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Protocol
@@ -32,14 +34,22 @@ class LLMProvider(Protocol):
     def complete_json(self, system: str, user: str, schema: dict, schema_name: str) -> LLMResponse: ...
 
 
-def _post(url: str, payload: dict, headers: dict, timeout: int) -> dict:
+def _post(url: str, payload: dict, headers: dict, timeout: int, retries: int = 4) -> dict:
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST",
                                  headers={"Content-Type": "application/json", "User-Agent": "clinical-ai-platform/0.1", **headers})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read())
-    except OSError as exc:  # includes URLError/HTTPError; message never contains the key
-        raise LLMUnavailable(f"LLM request failed: {type(exc).__name__}: {getattr(exc, 'code', '')}") from exc
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as exc:
+            if exc.code in (429, 503) and attempt < retries:  # rate limit: honour Retry-After, else back off
+                wait = exc.headers.get("retry-after") if exc.headers else None
+                time.sleep(min(60.0, float(wait)) if wait and wait.replace(".", "", 1).isdigit() else 2 ** (attempt + 1))
+                continue
+            raise LLMUnavailable(f"LLM request failed: HTTPError: {exc.code}") from exc
+        except OSError as exc:  # URLError/timeouts; message never contains the key
+            raise LLMUnavailable(f"LLM request failed: {type(exc).__name__}") from exc
+    raise LLMUnavailable("LLM request failed: retries exhausted")
 
 
 class OpenAICompatibleProvider:

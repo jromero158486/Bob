@@ -173,7 +173,7 @@ def make_fact_id(*parts: object) -> str:
 class ComponentRun(_Frozen):
     name: str
     version: str
-    status: Literal["ran", "unavailable", "disabled", "failed"]
+    status: Literal["ran", "partial", "unavailable", "disabled", "failed"]
     detail: str = ""
 
 

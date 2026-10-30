@@ -5,6 +5,7 @@ DATABASE_URL=postgresql+psycopg://clinical:clinical@localhost:5432/clinical \
 """
 import argparse
 import json
+import os
 
 from backend.app.layer1_ingestion.adapters.ibm_json import IBMJsonAdapter
 from backend.app.layer1_ingestion.pipeline import ingest_documents
@@ -14,11 +15,19 @@ from backend.app.layer3_store.db import database_url, make_engine, migrate
 from backend.app.layer3_store.repository import ClinicalStore
 
 
-def run(input_path: str, url: str | None = None, gernermed: bool = True) -> dict:
+def run(input_path: str, url: str | None = None, gernermed: bool = True, llm: bool = False,
+        section_engine: str = "auto") -> dict:
     url = url or database_url()
     migrate(url)
-    records = ingest_documents(IBMJsonAdapter(input_path).load())
-    result = extract(records, ner=GernermedNER.from_env() if gernermed else None)
+    provider = None
+    if llm:  # explicit opt-in; fail loudly rather than silently falling back
+        from backend.app.layer2_extraction.llm.provider import provider_from_env
+        provider = provider_from_env()
+    ner = GernermedNER.from_env() if gernermed else None
+    if gernermed and ner is None and os.environ.get("REQUIRE_GERNERMED") == "1":
+        raise SystemExit("REQUIRE_GERNERMED=1 but GERNERMED_PYTHON is not set")
+    records = ingest_documents(IBMJsonAdapter(input_path).load(), engine=section_engine)
+    result = extract(records, ner=ner, llm=provider)
     rep = ClinicalStore(make_engine(url)).ingest(records, result)
     return {"database": url.split("@")[-1], "documents_new": len(rep.new_documents),
             "documents_unchanged": len(rep.unchanged_documents), "documents_superseded": len(rep.superseded_documents),
@@ -30,8 +39,11 @@ def main():
     ap.add_argument("--input", required=True)
     ap.add_argument("--database-url", default=None)
     ap.add_argument("--no-gernermed", action="store_true")
+    ap.add_argument("--llm", action="store_true", help="Run LLM structured extraction (LLM_PROVIDER env); fails if unset")
+    ap.add_argument("--section-engine", default="auto", choices=["auto", "medspacy", "rules"])
     a = ap.parse_args()
-    print(json.dumps(run(a.input, a.database_url, not a.no_gernermed), indent=2, ensure_ascii=False))
+    print(json.dumps(run(a.input, a.database_url, not a.no_gernermed, a.llm, a.section_engine), indent=2,
+                     ensure_ascii=False))
 
 
 if __name__ == "__main__":

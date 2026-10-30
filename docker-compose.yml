@@ -17,6 +17,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://clinical:${POSTGRES_PASSWORD:-clinical}@db:5432/clinical
       LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      INGEST_FLAGS: ${INGEST_FLAGS:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}

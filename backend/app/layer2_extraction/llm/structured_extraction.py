@@ -89,6 +89,10 @@ def llm_candidates(all_views: list[PassageView], provider: LLMProvider, batch: i
                                                                   extractor=info, needs_review=True, notes=notes))
                 accepted += 1
     except LLMUnavailable as exc:
-        return out, ComponentRun(name="llm-structured-extraction", version=info.version, status="failed", detail=str(exc))
+        # Facts accepted before the failure are kept (each is quote-grounded and needs_review) but reported as partial.
+        status = "partial" if accepted else "failed"
+        return out, ComponentRun(name="llm-structured-extraction", version=f"{info.name} {info.version}", status=status,
+                                 detail=f"{exc}; accepted={accepted} rejected={rejected} before failure; "
+                                        f"batches done={k // batch}/{-(-len(narrative) // batch)}")
     return out, ComponentRun(name="llm-structured-extraction", version=f"{info.name} {info.version}", status="ran",
                              detail=f"accepted={accepted} rejected={rejected}")
