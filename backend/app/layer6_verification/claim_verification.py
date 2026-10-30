@@ -166,6 +166,18 @@ def _veto(d: dict) -> bool:
     return d["values"] == "fail" or d["dates"] == "fail" or d["negation"] == "fail"
 
 
+def _evidence_rank(verdict: str, cit, ent, con, det: dict) -> tuple:
+    """Order evidence so the passages that decided the verdict come first (UIs show only the top few)."""
+    topical = det["overlap"] >= 0.5
+    if verdict == "supported":
+        decisive = not _veto(det) and (ent >= ENTAIL_T if ent is not None else topical)
+        return (not decisive, -(ent or 0), -det["overlap"])
+    if verdict == "contradicted":
+        decisive = topical and (det["conflicting_values"] or det["negation"] == "fail" or (con or 0) >= CONTRA_T)
+        return (not decisive, -(con or 0), -det["overlap"])
+    return (0,)
+
+
 def _claim_terms(claim: str) -> list[str]:
     """Search terms for one claim: the planner's lexicon terms plus the claim's own content words (VeriFact
     queries with the claim text itself; the dense/hybrid modes embed title + terms)."""
@@ -296,6 +308,7 @@ class ClaimVerificationPipeline:
     @staticmethod
     def _done(r: ClaimResult, verdict: str, review: bool, reason: str) -> ClaimResult:
         r.verdict, r.needs_review, r.review_reason = verdict, review, reason
+        r.evidence.sort(key=lambda ev: _evidence_rank(verdict, *ev))
         return r
 
     def run(self, text: str, atomizer: str = "rules") -> tuple[list[ClaimResult], dict]:
