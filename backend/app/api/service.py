@@ -1,6 +1,7 @@
 """End-to-end task flow: request -> plan (L4) -> retrieval/synthesis (L5) -> verification (L6) -> response."""
 from __future__ import annotations
 
+import os
 import time
 import uuid
 
@@ -29,7 +30,9 @@ def run_task(store: ClinicalStore, patient_id: str, request: str, llm=None,
     docs = store.documents(patient_id)
     if not docs:
         raise UnknownPatient(patient_id)
-    plan = plan_task(request, llm)
+    # PLANNER=heuristic keeps the validated rule planner (with its require-term and ATC safety filters) even when an
+    # LLM is configured; the LLM stays available for /api/verify (judge=groq) and extraction.
+    plan = plan_task(request, llm if os.environ.get("PLANNER", "llm").lower() == "llm" else None)
     t1 = time.perf_counter()
     latest = max(d.document_date for d in docs if d.document_date)
     as_of = plan.as_of or latest
