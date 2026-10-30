@@ -236,3 +236,18 @@ def test_medspacy_context_agrees_on_plain_negation_and_documents_abbreviation_ga
     t = "St.p. Hypertensiver Krise 06/2015"
     # Known limitation: medSpaCy's regex matcher drops triggers misaligned with spaCy tokens ('St.p.').
     assert classify_native(t, [(6, 25)])[0].temporality == "historical"
+
+
+def test_bioc_export_carries_fact_annotations_at_original_offsets(result):
+    pytest.importorskip("bioc")
+    from bioc import biocjson
+    from backend.app.layer1_ingestion.provenance.bioc_export import dumps_bioc
+    records = [process_document(doc(), "rules")]
+    coll = biocjson.loads(dumps_bioc(records, result.facts))
+    original = records[0].document.original_text
+    anns = [a for d in coll.documents for p in d.passages for a in p.annotations]
+    assert len(anns) == sum(len(f.evidence) for f in result.facts)
+    for a in anns:
+        loc = a.locations[0]
+        assert original[loc.offset:loc.offset + loc.length] == a.text
+        assert a.infons["extractor"] and a.infons["type"]

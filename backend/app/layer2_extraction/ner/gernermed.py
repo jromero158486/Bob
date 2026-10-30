@@ -60,3 +60,23 @@ class GernermedNER:
         if len(out["results"]) != len(texts):
             raise NerUnavailable("GERNERMED++ returned a mismatched number of results")
         return [[NerEntity(**e) for e in ents] for ents in out["results"]]
+
+
+ATTRIBUTE_LABELS = ("Strength", "Dosage", "Frequency", "Duration", "Form", "Route")
+
+
+def associate_attributes(ents: list[NerEntity], max_gap: int = 40) -> list[dict]:
+    """Attach GERNERMED++ attribute entities to a Drug entity in the same passage.
+
+    German medication text puts attributes after the drug ("Ramipril 5 mg 1-0-0 p.o."), so each attribute goes to
+    the nearest preceding Drug within `max_gap` characters, else to the nearest following Drug within `max_gap`.
+    Returns [{"drug", "start", "end", "attrs": {label: [texts]}}] in passage order."""
+    drugs = sorted((e for e in ents if e.label == "Drug"), key=lambda e: e.start)
+    groups = [{"drug": d.text, "start": d.start, "end": d.end, "attrs": {}} for d in drugs]
+    for e in sorted((e for e in ents if e.label in ATTRIBUTE_LABELS), key=lambda e: e.start):
+        before = [g for g in groups if g["end"] <= e.start and e.start - g["end"] <= max_gap]
+        after = [g for g in groups if g["start"] >= e.end and g["start"] - e.end <= max_gap]
+        g = before[-1] if before else (after[0] if after else None)
+        if g is not None:
+            g["attrs"].setdefault(e.label, []).append(e.text)
+    return groups

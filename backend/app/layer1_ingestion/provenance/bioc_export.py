@@ -8,7 +8,27 @@ import json
 from backend.app.shared.contracts.evidence import IngestedDocument
 
 
-def as_bioc_collection(records: Iterable[IngestedDocument]) -> dict:
+def _fact_annotations(facts) -> dict[str, list[dict]]:
+    """Layer 2 facts as BioC annotations; locations are offsets into the unchanged original source."""
+    out: dict[str, list[dict]] = {}
+    for f in facts or ():
+        for i, ev in enumerate(f.evidence):
+            out.setdefault(ev.passage_id, []).append({
+                "id": f"{f.fact_id}:{i}",
+                "infons": {"type": f.fact_type, "label": f.label, "evidence_role": ev.role,
+                           "codes": ";".join(f"{c.system}:{c.code}" for c in f.codings),
+                           "negated": str(f.assertion.negated).lower(), "certainty": f.assertion.certainty,
+                           "temporality": f.assertion.temporality, "experiencer": f.assertion.experiencer,
+                           "extractor": f.extractor.name, "extractor_version": f.extractor.version,
+                           "review_status": f.review_status},
+                "text": ev.raw_text,
+                "locations": [{"offset": ev.original_start, "length": ev.original_end - ev.original_start}],
+            })
+    return out
+
+
+def as_bioc_collection(records: Iterable[IngestedDocument], facts=None) -> dict:
+    anns = _fact_annotations(facts)
     documents = []
     for item in records:
         source = item.document
@@ -25,7 +45,7 @@ def as_bioc_collection(records: Iterable[IngestedDocument]) -> dict:
                            "section": p.section or "", "section_title": p.section_title or "",
                            "length": str(p.original_end - p.original_start)},
                 "text": p.raw_text,
-                "sentences": [], "annotations": [], "relations": [],
+                "sentences": [], "annotations": anns.get(p.passage_id, []), "relations": [],
             } for p in item.passages],
             "relations": [],
         })
@@ -33,8 +53,8 @@ def as_bioc_collection(records: Iterable[IngestedDocument]) -> dict:
             "infons": {"offset_unit": "unicode_codepoints"}, "documents": documents}
 
 
-def dumps_bioc(records: Iterable[IngestedDocument]) -> str:
-    payload = as_bioc_collection(records)
+def dumps_bioc(records: Iterable[IngestedDocument], facts=None) -> str:
+    payload = as_bioc_collection(records, facts)
     try:
         # Use actual library when available; verifies BioC shape before exporting.
         from bioc import biocjson
